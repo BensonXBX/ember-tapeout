@@ -1,0 +1,2 @@
+// Simulation stays at 60 Hz. A 144/240 Hz monitor must not multiply draw work.
+export function makeFrameBudget(hz=60){let next=-Infinity;const interval=1000/hz;return {ready(now,hidden=false){if(hidden){next=-Infinity;return false;}if(now+Math.min(1,interval*.06)<next)return false;next=Number.isFinite(next)?next+interval:now+interval;if(next<=now)next=now+interval;return true;},reset(){next=-Infinity;}};}
