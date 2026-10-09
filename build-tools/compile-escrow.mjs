@@ -1,0 +1,11 @@
+import solc from 'solc';
+import {readFileSync,writeFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+const root=resolve(import.meta.dirname,'..'),deps=resolve(import.meta.dirname,'../node_modules');
+const input={language:'Solidity',sources:{'EmberEscrow.sol':{content:readFileSync(root+'/contracts/EmberEscrow.sol','utf8')}},settings:{optimizer:{enabled:true,runs:200},viaIR:true,evmVersion:'shanghai',outputSelection:{'*':{'*':['abi','evm.bytecode.object','evm.deployedBytecode.object','evm.deployedBytecode.immutableReferences']}}}};
+const output=JSON.parse(solc.compile(JSON.stringify(input),{import:name=>{try{return{contents:readFileSync(resolve(deps,name),'utf8')}}catch{return{error:'Missing dependency'}}}}));
+for(const e of output.errors||[])console.log(e.formattedMessage);if(output.errors?.some(e=>e.severity==='error'))process.exit(1);
+const c=output.contracts['EmberEscrow.sol'].EmberEscrow;
+writeFileSync(root+'/contracts/artifact.json',JSON.stringify({compiler:solc.version(),abi:c.abi,bytecode:'0x'+c.evm.bytecode.object,runtime:'0x'+c.evm.deployedBytecode.object,immutables:c.evm.deployedBytecode.immutableReferences},null,2)+'\n');
+writeFileSync(root+'/contracts/standard-input.json',JSON.stringify({...input,sources:{...input.sources,...Object.fromEntries(Object.keys(output.sources).filter(n=>n!=='EmberEscrow.sol').map(n=>[n,{content:readFileSync(resolve(deps,n),'utf8')}]))}},null,2)+'\n');
+console.log('Escrow compiled',c.evm.deployedBytecode.object.length/2,'runtime bytes');
