@@ -1,0 +1,29 @@
+{
+  "name": "ember-tapeout",
+  "version": "1.3.3",
+  "private": true,
+  "description": "EMBER / 余烬 — a pixel fighting game with local NAND-circuit AI and X Layer wallet integration.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node scripts/start.mjs",
+    "build": "python3 build.py",
+    "test": "node --test tests/*.test.mjs",
+    "smoke": "node test-launch.mjs",
+    "deweb": "python3 build-tools/package-deweb.py",
+    "vendor": "node build-tools/bundle-wallet.mjs && node build-tools/bundle-finance.mjs",
+    "contracts": "node build-tools/compile-escrow.mjs",
+    "version-assets": "python3 build-tools/version.py"
+  },
+  "devDependencies": {
+    "@okxconnect/core": "1.9.1",
+    "@okxconnect/universal-provider": "1.9.1",
+    "@openzeppelin/contracts": "5.4.0",
+    "ethers": "6.15.0",
+    "ganache": "7.9.2",
+    "rolldown": "1.0.1",
+    "solc": "0.8.30"
+  }
+}

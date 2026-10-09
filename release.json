@@ -1,0 +1,13 @@
+{
+  "version": "1.3-scan.3",
+  "basePath": "/games/ember/",
+  "runtime": "node >=22.13.0",
+  "connectOrigins": [
+    "https://rpc.xlayer.tech",
+    "https://www.okx.com",
+    "https://www.okx.ac",
+    "wss://wsdexpri.okx.com",
+    "wss://wsdexpri.okx.ac",
+    "wss://wsdexpri.coinall.ltd"
+  ]
+}
