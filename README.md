@@ -29,7 +29,7 @@ TapeOutScan Circuit Arcade · TapeOut Genesis Transistor Hackathon submission so
 node scripts/start.mjs
 ```
 
-浏览器打开 **http://localhost:3276/games/ember/**，进入电路板挑战或连段训练。服务默认绑定 `0.0.0.0`，同一可信局域网可使用本机 IP 访问。手机主屏幕安装和外部钱包联调请使用正确配置的 HTTPS 环境；本地试玩不需要连接钱包。
+浏览器打开 `http://localhost:3276/games/ember/`，进入电路板挑战或连段训练。服务默认绑定 `0.0.0.0`，同一可信局域网可使用本机 IP 访问。手机主屏幕安装和外部钱包联调请使用正确配置的 HTTPS 环境；本地试玩不需要连接钱包。
 
 运行完整测试和重建第三方依赖：
 
