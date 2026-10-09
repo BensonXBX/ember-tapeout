@@ -47,3 +47,66 @@ test('upgrade retains old escrow, refuses active paid rooms and respects the new
  await db.prepare("INSERT INTO arena_rooms VALUES(?,'funding',0,?,?,0,?)").bind('ABCDEF',Date.now(),Date.now()+600000,JSON.stringify({payment:{key:'test'}})).run();await assert.rejects(finance.activate(await next.getAddress()),/UPGRADE_ACTIVE/);await db.prepare("DELETE FROM arena_rooms WHERE code=?").bind('ABCDEF').run();const v=await finance.activate(await next.getAddress());assert.equal(v.paused,true);assert.equal(v.enabled,false);assert.equal(v.configured,true);assert.deepEqual(v.legacy,[{escrow:await f.escrow.getAddress()}]);const old=await finance.admin({action:'ember-treasury',address:await f.escrow.getAddress()});assert.equal(old.escrow,await f.escrow.getAddress());assert.equal(old.paused,false);assert.equal(finance.public().enabled,false);assert.equal(JSON.parse(readFileSync(folder+'/finance.json')).refereeKey,f.wallets[3].privateKey);
  }finally{finance.close();db.close();await f.close();rmSync(folder,{recursive:true,force:true});}
 });
+
+test('safe blocks delayed past payment cutoff retain funded rooms until authoritative evidence arrives',async()=>{
+ const f=await fixture(196),db=openArenaDatabase(':memory:',new URL('../server/schema.sql',import.meta.url)),finance=new EmberFinance(db,null,{depositRoomsEnabled:true}),now=Date.now;
+ try{
+ finance.config={escrow:await f.escrow.getAddress()};finance.signer=f.wallets[3];const anchor=await f.raw.request({method:'eth_blockNumber',params:[]});let lag=true;
+ finance.rpc=async(_i,method,params)=>f.raw.request({method,params:params.map(v=>v==='safe'?(lag?anchor:'latest'):v)});
+ await finance.verify();const users=f.wallets.slice(1,3).map(w=>w.address.toLowerCase()),q=await finance.terms(users[0],{asset:0,amount:'0.01'}),p={wallets:users,payment:{...q,fundUntil:await f.time()+180},s:Array(80).fill(0)};
+ await db.prepare("INSERT INTO arena_rooms VALUES(?,'funding',0,?,?,0,?)").bind('ABCDEF',now(),now()+600000,JSON.stringify(p)).run();
+ for(let i=0;i<2;i++){const plan=await finance.handle(users[i],{action:'fund',key:q.key});await(await f.signers[i+1].sendTransaction(plan)).wait();}
+ Date.now=()=>now()+190000;finance.safeBlock=null;const pending=await finance.sync(users[0],q.key);assert.equal(pending.cancelled,false);assert.deepEqual(pending.chainPaid,[false,false]);assert.equal((await finance.row(users[0],q.key)).row.status,'funding');
+ lag=false;Date.now=()=>now()+196000;finance.safeBlock=null;const confirmed=await finance.sync(users[0],q.key);assert.deepEqual(confirmed.chainPaid,[true,true]);assert.equal(confirmed.cancelled,false);assert.equal((await finance.row(users[0],q.key)).row.status,'funding');
+ }finally{Date.now=now;finance.close();db.close();await f.close();}
+});
+
+test('BEM approval uses recent advisory state while payment credit remains safe-only',async()=>{
+ const f=await fixture(196),db=openArenaDatabase(':memory:',new URL('../server/schema.sql',import.meta.url)),finance=new EmberFinance(db,null,{depositRoomsEnabled:true});
+ try{for(const i of [1,2])await(await f.tok.connect(f.signers[i]).claim()).wait();const anchor=await f.raw.request({method:'eth_blockNumber',params:[]});
+ finance.config={escrow:await f.escrow.getAddress()};finance.signer=f.wallets[3];finance.rpc=async(_i,method,params)=>f.raw.request({method,params:params.map(v=>v==='safe'?anchor:v)});await finance.verify();
+ const users=f.wallets.slice(1,3).map(w=>w.address.toLowerCase()),q=await finance.terms(users[0],{asset:1,amount:'1'}),p={wallets:users,payment:{...q,fundUntil:await f.time()+180},s:Array(80).fill(0)};await db.prepare("INSERT INTO arena_rooms VALUES(?,'funding',0,?,?,0,?)").bind('ABCDEF',Date.now(),Date.now()+600000,JSON.stringify(p)).run();
+ const approval=await finance.handle(users[0],{action:'approve',key:q.key});await(await f.signers[1].sendTransaction(approval)).wait();finance.liveBlock=null;
+ assert.equal((await finance.handle(users[0],{action:'approve',key:q.key})).complete,true);
+ const payment=await finance.handle(users[0],{action:'fund',key:q.key});await(await f.signers[1].sendTransaction(payment)).wait();
+ assert.deepEqual((await finance.sync(users[0],q.key)).chainPaid,[false,false]);assert.equal((await f.escrow.getMatch(q.key)).paid[0],true);
+ finance.liveBlock=null;const observed=await finance.handle(users[0],{action:'sync',key:q.key});assert.deepEqual(observed.chainPaid,[false,false]);assert.deepEqual(observed.observedPaid,[true,false]);assert.equal((await finance.handle(users[0],{action:'fund',key:q.key})).complete,true);const durable=await finance.row(users[0],q.key);assert.deepEqual(durable.p.payment.paid,[false,false]);
+ }finally{finance.close();db.close();await f.close();}
+});
+
+// Exercise the same fast-start flow on a real local EVM with a deliberately frozen safe head.
+test('both latest deposits admit play while safe lags; single/batch rewards remain blocked until safe catches up',async()=>{
+ const f=await fixture(196),db=openArenaDatabase(':memory:',new URL('../server/schema.sql',import.meta.url)),finance=new EmberFinance(db,null,{depositRoomsEnabled:true}),now=Date.now;
+ try{
+ finance.config={escrow:await f.escrow.getAddress()};finance.signer=f.wallets[3];const anchor=await f.raw.request({method:'eth_blockNumber',params:[]});let lag=true;
+ finance.rpc=async(_i,method,params)=>f.raw.request({method,params:params.map(v=>v==='safe'?(lag?anchor:'latest'):v)});await finance.verify();finance.checkSafeInBackground=()=>{};
+ const users=f.wallets.slice(1,3).map(w=>w.address.toLowerCase()),q=await finance.terms(users[0],{asset:0,amount:'0.01'}),p={wallets:users,payment:{...q,fundUntil:await f.time()+180},s:Array(80).fill(0)};
+ await db.prepare("INSERT INTO arena_rooms VALUES(?,'funding',0,?,?,0,?)").bind('FASTAA',now(),now()+600000,JSON.stringify(p)).run();
+ for(let i=0;i<2;i++){finance.liveBlock=null;const plan=await finance.handle(users[i],{action:'fund',key:q.key});await(await f.signers[i+1].sendTransaction(plan)).wait();}
+ finance.liveBlock=null;let v=await finance.handle(users[0],{action:'sync',key:q.key});assert.deepEqual(v.paid,[true,true]);assert.deepEqual(v.chainPaid,[false,false]);let pair=await finance.row(users[0],q.key);assert.ok(pair.p.payment.admission);assert.deepEqual(pair.p.payment.paid,[false,false]);
+ pair.p.s[7]=0;finishPayment(pair.p,'finished',(await f.time())*1000);await db.prepare("UPDATE arena_rooms SET payload=?,status='finished' WHERE code=?").bind(JSON.stringify(pair.p),'FASTAA').run();await f.advance(61);Date.now=()=>now()+70000;
+ assert.equal((await finance.history(users[0],{claimable:true})).length,1);await assert.rejects(finance.handle(users[0],{action:'claim',key:q.key}),/SETTLEMENT_PENDING/);await assert.rejects(finance.handle(users[0],{action:'collect',keys:[q.key]}),/SETTLEMENT_PENDING/);
+ lag=false;finance.safeBlock=null;Date.now=()=>now()+76000;await finance.maintainFinality();v=await finance.handle(users[0],{action:'sync',key:q.key});assert.equal(v.settlementReady,true);assert.deepEqual(v.chainPaid,[true,true]);
+ const claim=await finance.handle(users[0],{action:'claim',key:q.key});await(await f.signers[1].sendTransaction({...claim,gasLimit:500000})).wait();assert.equal((await f.escrow.getMatch(q.key)).withdrawn[0],true);
+ }finally{Date.now=now;finance.close();db.close();await f.close();}
+});
+test('reorg of a fast-start deposit cancels awards and refunds only surviving on-chain funds',async()=>{
+ const f=await fixture(196),db=openArenaDatabase(':memory:',new URL('../server/schema.sql',import.meta.url)),finance=new EmberFinance(db,null,{depositRoomsEnabled:true}),now=Date.now;
+ try{
+ finance.config={escrow:await f.escrow.getAddress()};finance.signer=f.wallets[3];finance.rpc=async(_i,method,params)=>f.raw.request({method,params:params.map(v=>v==='safe'?'latest':v)});await finance.verify();finance.checkSafeInBackground=()=>{};
+ const users=f.wallets.slice(1,3).map(w=>w.address.toLowerCase()),q=await finance.terms(users[0],{asset:0,amount:'0.01'}),p={wallets:users,payment:{...q,fundUntil:await f.time()+180},s:Array(80).fill(0)};await db.prepare("INSERT INTO arena_rooms VALUES(?,'funding',0,?,?,0,?)").bind('REORGA',now(),now()+600000,JSON.stringify(p)).run();
+ const first=await finance.handle(users[0],{action:'fund',key:q.key});await(await f.signers[1].sendTransaction(first)).wait();const fork=await f.raw.request({method:'evm_snapshot',params:[]});finance.liveBlock=null;const second=await finance.handle(users[1],{action:'fund',key:q.key});await(await f.signers[2].sendTransaction(second)).wait();finance.liveBlock=null;await finance.handle(users[0],{action:'sync',key:q.key});const pair=await finance.row(users[0],q.key);assert.ok(pair.p.payment.admission);
+ pair.p.s[7]=1;finishPayment(pair.p,'finished',(await f.time())*1000);await db.prepare("UPDATE arena_rooms SET payload=?,status='finished' WHERE code=?").bind(JSON.stringify(pair.p),'REORGA').run();
+ await f.raw.request({method:'evm_revert',params:[fork]});await f.advance(70);finance.safeBlock=null;finance.cache.clear();Date.now=()=>now()+75000;
+ const view=await finance.handle(users[0],{action:'sync',key:q.key});assert.equal(view.cancelled,true);assert.equal(view.payout,q.stake);assert.deepEqual(view.chainPaid,[true,false]);
+ const absent=await finance.handle(users[1],{action:'claim',key:q.key});assert.equal(absent.complete,true);const refund=await finance.handle(users[0],{action:'claim',key:q.key});await(await f.signers[1].sendTransaction({...refund,gasLimit:500000})).wait();assert.equal((await f.escrow.getMatch(q.key)).state,4n);assert.equal(await f.escrow.liability(0),0n);
+ }finally{Date.now=now;finance.close();db.close();await f.close();}
+});
+
+test('collect combines OKB and BEM wins with a deposit refund and settles each entitlement once',async()=>{const f=await fixture(196);try{
+ const okb=await f.ticket(0),bem=await f.ticket(1),refund=await f.ticket(0);await fund(f,okb);await fund(f,bem);await(await f.escrow.connect(f.signers[1]).fund(refund,await f.sign('Ticket',refund),{value:refund.stake})).wait();
+ const results=[okb,bem].map(t=>({id:t.id,winner:0,endedAt:0,evidence:t.rulesHash}));for(const r of results)r.endedAt=await f.time();results.push({id:refund.id,winner:2,endedAt:0,evidence:'0x'+'0'.repeat(64)});
+ const sigs=[await f.sign('Result',results[0]),await f.sign('Result',results[1]),await f.sign('Cancel',{id:refund.id})];await f.advance(61);
+ const before=await f.tok.balanceOf(f.wallets[1].address);await(await f.escrow.connect(f.signers[1]).collect(results,[false,false,true],sigs,{gasLimit:1000000})).wait();
+ assert.deepEqual((await f.escrow.getMatches(results.map(r=>r.id))).map(m=>m.withdrawn[0]),[true,true,true]);assert.equal(await f.tok.balanceOf(f.wallets[1].address)-before,bem.stake*18n/10n);assert.equal(await f.escrow.liability(0),0n);assert.equal(await f.escrow.liability(1),0n);assert.equal(await f.escrow.surplus(0),okb.stake/5n);assert.equal(await f.escrow.surplus(1),bem.stake/5n);
+ }finally{await f.close()}});

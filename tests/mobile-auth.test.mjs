@@ -21,7 +21,7 @@ test('X Layer nonce is signed, single-use, expiring and origin-bound; session re
  const results=await Promise.allSettled([call(body),call(body)]);assert.equal(results.filter(x=>x.status==='fulfilled').length,1);
  const login=results.find(x=>x.status==='fulfilled').value;assert.equal(await authenticate(db,login.session,origin),signer.address.toLowerCase());
  await assert.rejects(authenticate(db,login.session,'https://other.example'),/LOGIN_REQUIRED/);
- await assert.rejects(authenticate(db,login.session,origin,Date.now()+8*86400000),/LOGIN_REQUIRED/);
+ await assert.rejects(authenticate(db,login.session,origin,Date.now()+31*86400000),/LOGIN_REQUIRED/);
  await call({action:'logout',session:login.session});await assert.rejects(authenticate(db,login.session,origin),/LOGIN_REQUIRED/);
  const expired=await call({action:'challenge',address:signer.address,chainId:196});await assert.rejects(handleAuth(db,{action:'verify',id:expired.id,signature:await signer.signMessage(expired.message)},origin,'test',expired.expires+1),/LOGIN_EXPIRED/);
  }finally{db.close();}
@@ -104,4 +104,28 @@ test('returning to free mode during wallet connection prevents an automatic sign
 test('payment nonce is fixed before opening wallet; account changes and missing nonce stop sending',async()=>{
  const {db,signer,call}=await authFixture();let address=signer.address,sent=[];const provider={request:async q=>{if(q.method==='eth_accounts'||q.method==='eth_requestAccounts')return[address];if(q.method==='eth_chainId')return'0xc4';if(q.method==='personal_sign')return signer.signMessage(Buffer.from(q.params[0].slice(2),'hex'));if(q.method==='eth_getTransactionCount')return'0x4';if(q.method==='eth_sendTransaction'){sent.push(q.params[0]);return'0x'+'a'.repeat(64);}throw Error(q.method);}},client=makeOKXConnection({window:env(provider),storage:storage(),api:call});
  try{assert.equal(await client.connect(),true);const plan={chainId:196,from:signer.address.toLowerCase(),to:'0x'+'2'.repeat(40),data:'0x1234',value:'0x0'};await assert.rejects(client.send(plan),/BAD_TRANSACTION/);const fixed=await client.prepareTransaction(plan);assert.equal(fixed.nonce,'0x4');await client.send(fixed);assert.equal(sent[0].nonce,'0x4');assert.equal(sent[0].chainId,'0xc4');address='0x'+'3'.repeat(40);await assert.rejects(client.send(fixed),/WALLET_CHANGED/);assert.equal(sent.length,1);}finally{client.dispose();db.close();}
+});
+
+test('wallet nonce normalization accepts extension formats without permitting invalid or unsafe values',async()=>{
+ const {transactionNonce}=await import('../public/wallet.mjs');
+ for(const n of [7,'7','0x7','0x'+'0'.repeat(63)+'7',7n])assert.equal(transactionNonce(n),'0x7');
+ for(const n of [-1,1.5,NaN,9007199254740992,'0x20000000000000','',null,{},'1e2','-2'])assert.throws(()=>transactionNonce(n),/BAD_TRANSACTION/);
+});
+test('desktop payment preserves canonical nonce and sends one X Layer transaction after login',async()=>{
+ const {db,signer,call}=await authFixture();let nonce='0x'+'0'.repeat(63)+'4',sends=[];
+ const p={request:async a=>{if(['eth_accounts','eth_requestAccounts'].includes(a.method))return[signer.address];if(a.method==='eth_chainId')return'0xc4';if(a.method==='personal_sign')return signer.signMessage(Buffer.from(a.params[0].slice(2),'hex'));if(a.method==='eth_getTransactionCount')return nonce;if(a.method==='eth_sendTransaction'){sends.push(a.params[0]);return'0x'+'a'.repeat(64);}throw Error(a.method);}};
+ const w=env(p),client=makeOKXConnection({window:w,storage:storage(),api:call});try{await client.connect();const plan=await client.prepareTransaction({chainId:196,from:signer.address,to:'0x'+'2'.repeat(40),data:'0x1234',value:'0x0'});assert.equal(plan.nonce,'0x4');await client.send(plan);assert.equal(sends.length,1);assert.equal(sends[0].chainId,'0xc4');nonce={bad:true};await assert.rejects(client.prepareTransaction(plan),/BAD_TRANSACTION/);assert.equal(sends.length,1);}finally{client.dispose();db.close();}
+});
+
+test('payment nonce can use authenticated server read without waking mobile wallet for an RPC',async()=>{
+ const {db,signer,call}=await authFixture();let walletReads=0;
+ const p={request:async a=>{if(['eth_accounts','eth_requestAccounts'].includes(a.method))return[signer.address];if(a.method==='eth_chainId')return 196;if(a.method==='personal_sign')return signer.signMessage(Buffer.from(a.params[0].slice(2),'hex'));walletReads++;throw Error('unexpected wallet RPC');}};
+ const client=makeOKXConnection({window:env(p),storage:storage(),api:call});try{await client.connect();const plan=await client.prepareTransaction({from:signer.address},async()=> '0x9');assert.equal(plan.nonce,'0x9');assert.equal(walletReads,0);}finally{client.dispose();db.close();}
+});
+
+test('long-lived login survives app recreation; unchanged accounts preserve it; logout removes it',async()=>{
+ const {db,signer,call}=await authFixture();let signs=0;const store=storage(),listeners={};
+ const p={on:(e,f)=>listeners[e]=f,removeListener:(e)=>delete listeners[e],request:async a=>{if(['eth_accounts','eth_requestAccounts'].includes(a.method))return[signer.address];if(a.method==='eth_chainId')return 196;signs++;return signer.signMessage(Buffer.from(a.params[0].slice(2),'hex'));}};
+ const first=makeOKXConnection({window:env(p),storage:store,api:call});let second;
+ try{await first.connect();const saved=JSON.parse(store.getItem('ember-xlayer-login'));assert.ok(saved.expires-Date.now()>29*86400000);first.dispose();second=makeOKXConnection({window:env(p),storage:store,api:call});await second.restore();assert.equal(signs,1);assert.equal(second.state.phase,'connected');listeners.accountsChanged([signer.address]);assert.equal(second.state.session,saved.session);await second.disconnect();assert.equal(store.getItem('ember-xlayer-login'),null);}finally{first.dispose();second?.dispose();db.close();}
 });

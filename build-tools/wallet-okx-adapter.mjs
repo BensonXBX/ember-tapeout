@@ -17,7 +17,7 @@ export function adaptMobileWallet(sdk,{getLink,window:win=window,onHandoff=()=>{
    win.location.href=link;return true;
   }catch{return false;}
  }
- function handoff(target){if(action!==target)return;setReady(true);if(!win.document?.hidden)reopen();}
+ function handoff(target){if(action!==target||ready)return;setReady(true);if(!win.document?.hidden)reopen();}
  const send=sdk.client.engine.send.bind(sdk.client.engine);
  sdk.client.engine.send=(args,callbacks={},...rest)=>{const target=action;if(target?.kind!=='request'||!['personal_sign','eth_sendTransaction'].includes(args.method))return send(args,callbacks,...rest);return send(args,{...callbacks,onAck(...values){callbacks.onAck?.(...values);handoff(target);}},...rest);};
  sdk.on('okx_engine_connect_params',info=>{if(action?.kind==='connect'){action.info=info;handoff(action);}});
@@ -26,6 +26,7 @@ export function adaptMobileWallet(sdk,{getLink,window:win=window,onHandoff=()=>{
  function removeListener(event,fn){const cb=mapped.get(event)?.get(fn);if(cb){sdk.off?.(event==='accountsChanged'?'session_update':'session_delete',cb);mapped.get(event).delete(fn);}}
  async function request(args){
   if(args.method==='eth_accounts'||args.method==='eth_requestAccounts')return accounts();
+  if(args.method==='eth_chainId')return accounts().length?'0xc4':'0x0';
   // The SDK still checks approved namespaces and the requested chain.
   if(!['personal_sign','eth_sendTransaction'].includes(args.method))return sdk.request({...args,redirect:'back'},'eip155:196');
   if(action)throw Object.assign(Error('pending'),{code:-32002});

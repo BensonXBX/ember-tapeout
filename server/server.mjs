@@ -20,7 +20,7 @@ const base = config.basePath;
 const allowedOrigins=parseOrigins(process.env.ARENA_ALLOWED_ORIGINS);
 const database = openArenaDatabase(process.env.ARENA_DB || join(root, 'data', 'arena.sqlite'), join(root, 'server', 'schema.sql'));
 const monitor=new EmberMonitor(database);
-const finance=new EmberFinance(database,process.env.EMBER_FINANCE_CONFIG||null);if(finance.config?.escrow)void finance.verify().catch(()=>{});
+const finance=new EmberFinance(database,process.env.EMBER_FINANCE_CONFIG||null);if(finance.config?.escrow)void finance.configuration();
 const adminKey=process.env.EMBER_ADMIN_KEY_FILE?readFileSync(process.env.EMBER_ADMIN_KEY_FILE,'utf8').trim():'';const adminNonces=new Map();
 const publicRoot = join(root, 'public');
 const publicFiles = new Set((await readdir(publicRoot, { recursive: true })).map(name => name.replaceAll('\\', '/')));
@@ -81,7 +81,7 @@ const server = createServer(async (req, res) => {
       headers.set('cf-connecting-ip', trusted ? String(req.headers['x-real-ip'] || req.socket.remoteAddress) : req.socket.remoteAddress);
       if(path===`${base}api/finance`){
         if(!origin)return send(res,403,{error:'ORIGIN_DENIED'});
-        try{const body=JSON.parse(Buffer.concat(chunks));if(body.action==='config')return send(res,200,finance.public());const user=await authenticate(database,body.walletSession,origin);return send(res,200,await finance.handle(user,body));}catch(e){return send(res,e.status||503,{error:/^[A-Z_]+$/.test(e.message)?e.message:'CHAIN_BUSY'});}
+        try{const body=JSON.parse(Buffer.concat(chunks));if(body.action==='config')return send(res,200,await finance.configuration());const user=await authenticate(database,body.walletSession,origin);return send(res,200,await finance.handle(user,body));}catch(e){return send(res,e.status||503,{error:/^[A-Z_]+$/.test(e.message)?e.message:'CHAIN_BUSY'});}
       }
       if(path === `${base}api/auth`){
         if(!origin)return send(res,403,{error:'ORIGIN_DENIED'});
@@ -120,7 +120,10 @@ server.headersTimeout = 10_000;
 server.keepAliveTimeout = 5_000;
 server.maxHeadersCount = 40;
 server.listen(Number(process.env.PORT || 3210), process.env.HOST || '127.0.0.1', () => console.log(`Ember Arena ${config.version} listening on ${JSON.stringify(server.address())}${base}`));
+let lastCleanup=0;
 const cleanup = setInterval(async () => {
+  void finance.maintainFinality().then(result=>{if(result?.failed)console.error('Finality check: retrying',result.failed,'of',result.selected);}).catch(error=>console.error('Finality check:',error.message));
+  if(Date.now()-lastCleanup<60_000)return;lastCleanup=Date.now();
   try {
     await expireRooms(database);
     await database.prepare("DELETE FROM arena_rooms WHERE expires < ? AND status IN ('finished','cancelled') AND json_type(payload,'$.payment') IS NULL").bind(Date.now()).run();
@@ -128,7 +131,7 @@ const cleanup = setInterval(async () => {
     await database.prepare('DELETE FROM ember_sessions WHERE expires <= ?').bind(Date.now()).run();
     await database.prepare('DELETE FROM arena_limits WHERE since < ?').bind(Date.now() - 120000).run();
   } catch (error) { console.error('Room cleanup:', error.message); }
-}, 60_000).unref();
+}, 5_000).unref();
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => {
   clearInterval(cleanup);
   sockets.close();finance.close();

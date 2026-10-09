@@ -13,7 +13,7 @@ function fixture({link=getOKXLink,walletType}={}){
 test('PWA connection URL opens only when ready; signing is sent before opening; reopen never resends',async()=>{
  const f=fixture(),{mobile}=f;const connecting=mobile.connect();assert.equal(mobile.reopen(),false);f.events.get('okx_engine_connect_params')({connectRequest:{topic:'test'}});assert.equal(f.opens.length,1);f.connect();await connecting;assert.equal(mobile.reopen(),false);
  const signing=mobile.provider.request({method:'personal_sign',params:['0x61',address]});assert.equal(f.requests.length,1);assert.equal(f.opens.length,1);assert.equal(mobile.canReopen,false);
- f.requests[0].cb.onAck();assert.equal(f.opens.at(-1),'okxweb3://web3/wallet/connect');assert.equal(mobile.canReopen,true);mobile.reopen();mobile.reopen();assert.equal(f.requests.length,1);
+ f.requests[0].cb.onAck();assert.equal(f.opens.at(-1),'okxweb3://web3/wallet/connect');assert.equal(mobile.canReopen,true);const count=f.opens.length;f.requests[0].cb.onAck();assert.equal(f.opens.length,count);mobile.reopen();mobile.reopen();assert.equal(f.requests.length,1);
  await assert.rejects(mobile.provider.request({method:'personal_sign',params:['0x61',address]}),e=>e.code===-32002);
  f.requests[0].cb.resolve({result:'signature'});assert.equal(await signing,'signature');assert.equal(mobile.canReopen,false);
 });
@@ -39,4 +39,10 @@ test('wallet launcher refuses non-wallet or malformed links without leaving the 
  for(const deepLink of ['https://web3.okx.com','javascript:alert(1)','okxweb3://evil/wallet/connect','okxwallet://web3/other','okx://user@web3/wallet/connect','okxweb3://web3:12/wallet/connect']){
   const f=fixture({link:()=>({deepLink})}),p=f.mobile.connect();f.events.get('okx_engine_connect_params')({connectRequest:{topic:'test'}});assert.equal(f.mobile.reopen(),false);assert.equal(f.opens.length,0);f.connect();await p;
  }
+});
+
+test('restored mobile namespace supplies account and chain without a relay RPC or opening OKX',async()=>{
+ const f=fixture();f.sdk.session={namespaces:{eip155:{accounts:['eip155:196:'+address]}}};
+ assert.equal(await f.mobile.provider.request({method:'eth_chainId'}),'0xc4');assert.deepEqual(await f.mobile.provider.request({method:'eth_accounts'}),[address]);await f.mobile.connect();assert.equal(f.requests.length,0);assert.equal(f.opens.length,0);
+ f.sdk.session=null;assert.equal(await f.mobile.provider.request({method:'eth_chainId'}),'0x0');
 });

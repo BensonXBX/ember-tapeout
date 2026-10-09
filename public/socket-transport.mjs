@@ -15,3 +15,11 @@ export function makeArenaTransport(fallback,{Socket=globalThis.WebSocket,schedul
   }
  };
 }
+
+// A successful room heartbeat restores transport health even while no combat
+// frames advance (waiting/funding). Connection feedback is not payment evidence.
+export function acceptRoomHeartbeat(session,now,rtt){
+ const recovered=!!(session.failures||session.networkRecovering);
+ session.failures=0;session.networkRecovering=false;session.lastReceived=now;session.lastRtt=rtt;
+ return recovered;
+}

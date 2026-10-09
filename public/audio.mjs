@@ -6,11 +6,12 @@ export const AUDIO_LIMITS=Object.freeze({sources:24,sampleRate:16000});
 const DEFAULTS={enabled:true,music:35,sfx:70};
 export function audioSettings(value={}){const settings={...DEFAULTS};if(typeof value.enabled==='boolean')settings.enabled=value.enabled;for(const k of ['music','sfx'])if(Number.isFinite(value[k]))settings[k]=Math.max(0,Math.min(100,Math.round(value[k])));return settings;}
 const hz=n=>440*2**((n-69)/12);
-export function makeAudio({onStatus=()=>{}}={}){
+export function makeAudio({onStatus=()=>{},window:win=globalThis.window,document:doc=globalThis.document,clock=()=>performance.now()}={}){
  let settings;try{settings=audioSettings(JSON.parse(localStorage.getItem('ember-audio-v21')||'{}'));}catch{settings=audioSettings();}
  let ctx=null,bus=null,noise=null,battle=false,quiet=true,lab=false,previewUntil=0,next=0,index=0,timer=null,disposed=false,musicType=0,heat=false;
+ let resumeFailed=false,stalled=false,clockAt=0,audioAt=0,recoveryTimer=null;
  const sources=new Set(),reader=makeAudioEvents(event);
- function status(){onStatus({enabled:settings.enabled,ready:ctx?.state==='running',active:battle&&!quiet,theme:MUSIC_THEMES[musicType].name,settings:{...settings}});}
+ function status(){onStatus({enabled:settings.enabled,ready:ctx?.state==='running'&&!stalled,active:battle&&!quiet,theme:MUSIC_THEMES[musicType].name,settings:{...settings}});}
  function save(){try{localStorage.setItem('ember-audio-v21',JSON.stringify(settings));}catch{}status();}
  function gains(){if(!ctx)return;const t=ctx.currentTime;
   for(const k of ['music','sfx']){const p=bus[k].gain;p.cancelScheduledValues(t);p.setTargetAtTime(settings[k]/100,t,.04);}
@@ -68,27 +69,38 @@ export function makeAudio({onStatus=()=>{}}={}){
   else if(kind==='stab'){tone('music',f,duration,volume,'sawtooth',when,f*.99,pan);tone('music',f/2,duration,volume*.3,'triangle',when,f/2,pan);}
   else tone('music',f,duration,volume,kind==='lead'?'triangle':'sine',when,f,pan);
  }
- function schedule(){if(!ctx||ctx.state!=='running'||quiet||!settings.enabled)return;const t=ctx.currentTime;
+ function schedule(){if(!ctx||ctx.state!=='running'||quiet||!settings.enabled)return;const t=ctx.currentTime,wall=clock();
+  if(t!==audioAt){audioAt=t;clockAt=wall;if(stalled){stalled=false;status();}}else if(clockAt&&wall-clockAt>1500&&!stalled){stalled=true;status();}
+  if(stalled)return;
   if(settings.music===0||!(battle||t<previewUntil))return;
   if(next<t-.1)next=t+.025;
   while(next<t+.12){composeMusic(index,musicType,lab,heat,(kind,note,duration,volume,pan)=>musicInstrument(kind,note,duration,volume,pan,next));next+=musicTime(index+1,musicType)-musicTime(index,musicType);index++;}
  }
- async function unlock(){if(disposed||!settings.enabled)return false;try{
+ function resetContext(){stopAll();clearInterval(timer);timer=null;const old=ctx;ctx=null;bus=null;noise=null;if(old){old.onstatechange=null;void old.close().catch(()=>{});}resumeFailed=false;stalled=false;next=0;audioAt=0;clockAt=0;}
+ async function unlock(rebuild=false){if(disposed||!settings.enabled||doc?.hidden)return false;let target;try{
+  if(rebuild||ctx?.state==='closed')resetContext();
   if(!ctx){const Audio=globalThis.AudioContext||globalThis.webkitAudioContext;if(!Audio)throw Error('unsupported');ctx=new Audio();bus={};for(const key of ['master','music','sfx'])bus[key]=ctx.createGain();for(const key of ['music','sfx'])bus[key].connect(bus.master);
    const limiter=ctx.createDynamicsCompressor();limiter.threshold.value=-12;limiter.knee.value=15;limiter.ratio.value=5;limiter.attack.value=.003;limiter.release.value=.15;bus.master.connect(limiter);limiter.connect(ctx.destination);
    noise=ctx.createBuffer(1,NOISE_SAMPLES,16000);const data=noise.getChannelData(0);let seed=7123;for(let i=0;i<data.length;i++){seed=(seed*1664525+1013904223)>>>0;data[i]=seed/2147483648-1;}
-   timer=setInterval(schedule,50);ctx.onstatechange=status;
+   timer=setInterval(schedule,50);ctx.onstatechange=()=>{if(ctx?.state==='running'){clockAt=clock();audioAt=ctx.currentTime;stalled=false;gains();schedule();}status();};
   }
-  await ctx.resume();gains();status();return ctx.state==='running';
- }catch{onStatus({enabled:settings.enabled,ready:false,unavailable:true,settings:{...settings}});return false;}}
+  target=ctx;let timeout;
+  try{await Promise.race([target.resume(),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('resume timeout')),1200);})]);}finally{clearTimeout(timeout);}
+  if(target!==ctx||disposed)return false;resumeFailed=false;clockAt=clock();audioAt=ctx.currentTime;gains();schedule();status();return ctx.state==='running';
+ }catch{if(disposed||target&&target!==ctx)return false;resumeFailed=true;onStatus({enabled:settings.enabled,ready:false,unavailable:true,settings:{...settings}});return false;}}
+ // Foreground recovery is bounded; a real touch-end can rebuild a stuck iOS context.
+ const gesture=e=>{if(e.target?.closest?.('#demoMusic'))return;if(settings.enabled&&(!ctx||ctx.state!=='running'||stalled||resumeFailed))void unlock(stalled||resumeFailed);};
+ const foreground=()=>{clearTimeout(recoveryTimer);if(doc?.hidden){clockAt=0;return;}if(ctx&&settings.enabled){void unlock();recoveryTimer=setTimeout(()=>{if(!disposed&&!doc?.hidden&&ctx?.state!=='running')void unlock();},300);}};
+ for(const event of ['pointerdown','pointerup','touchend','keydown'])win?.addEventListener(event,gesture,{capture:true,passive:true});
+ win?.addEventListener('pageshow',foreground);win?.addEventListener('focus',foreground);doc?.addEventListener('visibilitychange',foreground);
  return {
-  bytes:AUDIO_BYTES,get ready(){return ctx?.state==='running';},get settings(){return {...settings};},unlock,
+  bytes:AUDIO_BYTES,get ready(){return ctx?.state==='running'&&!stalled;},get settings(){return {...settings};},unlock,
   begin(s,isLab=false,slot=0){stopAll();previewUntil=0;reader.reset(s);battle=true;quiet=false;lab=isLab;heat=false;musicType=s[16+slot*28+11]|0;index=0;if(ctx){next=ctx.currentTime+.03;gains();}void unlock();},
   demo(type){if(musicType!==type||!lab){musicType=type;lab=true;heat=false;index=0;stopAll();if(ctx)next=ctx.currentTime+.025;}},
   reset(s){stopAll();reader.reset(s);if(ctx)next=ctx.currentTime+.025;},observe(s,damage=null){heat=!lab&&s[1]===2&&(Math.min(s[19],s[47])<=45||s[2]<=1200);reader.observe(s,damage);},
   activity(active,hidden=false){if(hidden)previewUntil=0;const hush=hidden||(!active&&(!ctx||ctx.currentTime>=previewUntil)),changed=battle!==active||hush!==quiet;battle=active;if(hush!==quiet){quiet=hush;if(quiet)stopAll();else if(ctx)next=ctx.currentTime+.025;gains();}if(changed)status();},
   set(key,value){if(key==='enabled')settings.enabled=!!value;else if(['music','sfx'].includes(key))settings[key]=Math.max(0,Math.min(100,Number(value)||0));if(!settings.enabled)stopAll();if(settings.music===0)for(const item of [...sources])if(item.channel==='music')stop(item);if(settings.sfx===0)for(const item of [...sources])if(item.channel==='sfx')stop(item);gains();save();},
   async preview(kind,type=0,profile=null){if(!['music','sfx'].includes(kind))return;settings.enabled=true;save();if(!await unlock())return;quiet=false;previewUntil=ctx.currentTime+(kind==='music'?8:3);gains();if(kind==='music'){for(const item of [...sources])if(item.channel==='music')stop(item);musicType=type===1?1:0;next=ctx.currentTime+.03;index=32;}else if(kind==='sfx'){if(profile===null)sound('attack',type,type===0?12:20,0);else sound('hit',type,0,0,profile);} status();},
-  dispose(){disposed=true;clearInterval(timer);stopAll();void ctx?.close();noise=null;}
+  dispose(){disposed=true;clearTimeout(recoveryTimer);for(const event of ['pointerdown','pointerup','touchend','keydown'])win?.removeEventListener(event,gesture,true);win?.removeEventListener('pageshow',foreground);win?.removeEventListener('focus',foreground);doc?.removeEventListener('visibilitychange',foreground);resetContext();}
  };
 }

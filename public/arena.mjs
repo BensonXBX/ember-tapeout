@@ -1,24 +1,24 @@
 import {BASE_STAGES,STAGE_COUNT,readCampaign,unlockedStage,winStage,saveCampaign,campaignInput,makeCampaignPanel,readCampaignAI,saveCampaignAI} from './campaign.mjs?v=c5c78f1d673a3db1';
-import {makePayments,payText} from './payments.mjs?v=d865c5cbd284ae8f';
+import {makePayments,payText} from './payments.mjs?v=1811ce97d357a065';
 const API_URL='/games/ember/api/arena',WSS_URL='';
-import {text,entryText,controlSequence,language} from './experience-text.mjs?v=06fc8452cd83ba41';
-import {makeExperience} from './experience.mjs?v=f4046577dfaae9e3';
+import {text,entryText,controlSequence,language} from './experience-text.mjs?v=70f922bbef6f5838';
+import {makeExperience} from './experience.mjs?v=e93af9340eaba32f';
 import {makeReadyInputGuard} from './ready-preview.mjs?v=2ad087b437ff02f9';
-import {makeOKXConnection,isMobile} from './wallet.mjs?v=1b27b877c8c9e6fd';
+import {makeOKXConnection,isMobile} from './wallet.mjs?v=e707770b310144b6';
 import {makeDiagnostics} from './diagnostics.mjs?v=ac8b038e763b5a28';
 import {makeViewport} from './viewport.mjs?v=a496f7140a47631c';
 import {makeRoomCleanup} from './room-cleanup.mjs?v=4b998542fe356e64';
 import {makeInputSources,bindTouchControls,makeMobileLayout,makeTouchPreferences} from './mobile.mjs?v=87f208c83d6ca858';
-import {makeArenaTransport} from './socket-transport.mjs?v=aa6c059933725e4a';
+import {makeArenaTransport,acceptRoomHeartbeat} from './socket-transport.mjs?v=2bbf7da8630dce4a';
 import {makePrediction} from './prediction.mjs?v=b4a5e757c7484e12';
 import {makeFrameBudget} from './frame-budget.mjs?v=a6e4b5200f070703';
-import {makeRoomLobby} from './lobby.mjs?v=cdf88c455851526a';
-import {makeMenuPanels} from './menu.mjs?v=f7114e1b7f81394c';
+import {makeRoomLobby} from './lobby.mjs?v=79898314bcecfd4b';
+import {makeMenuPanels} from './menu.mjs?v=4b1a3e4ca528349b';
 import {createState,start,step,pbase,SIZE,ACTION_MASK,MAX_HP,elementImbued} from './engine.mjs?v=ee9e0d5b4ef43ac9';
 import {makeRenderer,fighter,artReady,stageReady} from './render.mjs?v=b7005c16b606d5db';
 import {COMBOS,ROUTE_STEPS} from './combos.mjs?v=1410d01635f97fbb';
 import {makeTraining,makeComboShowcase,inputLabel,actionLabel} from './training.mjs?v=6deb00a3f38c9e14';
-import {makeAudio} from './audio.mjs?v=576bb19d81852a68';
+import {makeAudio} from './audio.mjs?v=1f651cd599e8271f';
 const elements=new Map(),$=id=>{let node=elements.get(id);if(!node){node=document.getElementById(id);if(node)elements.set(id,node);}return node;},renderer=makeRenderer($('arena')),lab=makeTraining();
 let connecting=false;const readyInput=makeReadyInputGuard();let waitingPractice=false;
 let state=createState(),mode='pve',selected=0,opponent=1,level=1,unlocked=1,running=false,paused=false,mask=0,edgeBits=0,session=null,pollTimer=0,seq=0,generation=0,last=0,acc=0,finished=false;
@@ -29,7 +29,7 @@ function syncCombatInput(){const change=readyInput.sync(state,waitingPractice,in
 function clearCombatInput(){inputs.clear();touchControls?.clear();mask=0;edgeBits=0;predictionEdges=0;}
 const mobile=makeMobileLayout({onChange:portrait=>{if(portrait)clearCombatInput();$('rotateStatus').textContent=mode==='pvp'?'在线对局仍在进行':'本地训练已暂停';}});
 const campaignPanel=makeCampaignPanel({screen:document.querySelector('.screen'),canvas:$('arena'),hud:document.querySelector('.hud'),stick:document.querySelector('.joystick'),menu:$('fullscreenMenuBtn'),mobile:()=>mobile.touch,projectX:x=>renderer.projectX(x),t:entryText});
-const panels=makeMenuPanels({dialogs:[$('gameMenu'),$('audioSettings'),$('help'),$('comboDialog'),$('trainingDialog'),$('settingsDialog'),$('walletDialog'),$('exitDialog'),$('experienceDialog'),$('paymentDialog'),$('rewardsDialog'),$('amountDialog'),$('nicknameDialog')],localGame:()=>running&&mode!=='pvp',isPaused:()=>paused,togglePause,clearInput:()=>{clearCombatInput();acc=0;},getFocus:()=>document.activeElement,focusArena:()=>{if(running)$('arena').focus({preventScroll:true});}});
+const panels=makeMenuPanels({closeLabel:()=>payText('closeWindow'),dialogs:[$('gameMenu'),$('audioSettings'),$('help'),$('comboDialog'),$('trainingDialog'),$('settingsDialog'),$('walletDialog'),$('exitDialog'),$('experienceDialog'),$('paymentDialog'),$('rewardsDialog'),$('amountDialog'),$('nicknameDialog')],localGame:()=>running&&mode!=='pvp',isPaused:()=>paused,togglePause,clearInput:()=>{clearCombatInput();acc=0;},getFocus:()=>document.activeElement,focusArena:()=>{if(running)$('arena').focus({preventScroll:true});}});
 function battleView(on){if(on&&mode==='pve')activeCampaignAI=campaignAI;campaignPanel.root.hidden=true;campaignPanel.reset();readyInput.reset();document.querySelector('.screen').dataset.paused='false';const home=!on&&document.body.dataset.view==='home';document.body.dataset.view=on?'battle':home?'home':'lobby';$('home').hidden=!home;$('exitScreen').hidden=true;$('lobby').hidden=on||home;$('battleView').hidden=!on;$('labWorkbench').hidden=!on||mode!=='lab';if(mode==='lab'&&on)$('labWorkbench').prepend($('labPanel'));else $('setupOptions').append($('labPanel'));$('battleCoach').hidden=!on||mode!=='lab';if(on){panels.reset();$('coachBody').hidden=mode!=='lab';$('coachToggle').setAttribute('aria-expanded',String(mode==='lab'));updateCoach(true);window.scrollTo({top:0,left:0,behavior:'instant'});}else{$('lobbyActions').append($('primary'));panels.reset();}mobile.sync();}
 const rooms=makeRoomLobby({api,connect:selectOnline,available:()=>document.body.dataset.view==='lobby'&&mode==='pvp'&&!running&&!connecting,currentRoom:()=>session?.code||''});
 function lobbySummary(){
@@ -79,9 +79,9 @@ function comboTable(){
  document.querySelector('.combo-grid').classList.toggle('single',comboFilter!=='all');document.querySelectorAll('[data-combo]').forEach(b=>{const on=b.dataset.combo===comboFilter;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});
 }
 document.querySelectorAll('[data-combo]').forEach(b=>b.onclick=()=>{comboFilter=b.dataset.combo;comboTable();});
-function character(n){if(running||session||connecting)return notice('对局中不能更换角色。');selected=n;characterStory(n);document.querySelectorAll('[data-fighter]').forEach(b=>{const yes=+b.dataset.fighter===n;b.classList.toggle('selected',yes);b.setAttribute('aria-pressed',String(yes));});$('skillName').textContent=n?'霜月斩 / 永夜冰葬':'焰掌 / 赤莲焚城';$('skillDesc').textContent=n?'剑尖控距 · 冰结剑气 · 远程牵制':'贴身突进 · 连续拳脚 · 赤焰爆发';$('roleRange').textContent=n?'剑尖 36–60 · 远程 120–300':'贴身 18–40 · 前踏拳脚追击';$('roleWeak').textContent=n?'轻击6帧起手，贴身容易被抢先；剑气可对消':'拳短，远距需跳入或突进接近';$('roleRisk').textContent=n?'重击总长40帧／远程总长35帧，挥空易被突进反击':'突进被挡或落空不能取消，会停在对手面前';$('speedStat').textContent=n?'▰▰▰▱▱':'▰▰▰▰▱';$('rangeStat').textContent=n?'▰▰▰▰▱':'▰▰▱▱▱';state=createState(n,opponent);comboTable();labRoutes();updateHUD();lobbySummary();}
+function character(n){if(session?.selection){if(session.selectionLocked||session.selection.locked?.[session.slot])return;selected=n;paintOnlineSelection();return;}if(running||session||connecting)return notice('对局中不能更换角色。');selected=n;characterStory(n);document.querySelectorAll('[data-fighter]').forEach(b=>{const yes=+b.dataset.fighter===n;b.classList.toggle('selected',yes);b.setAttribute('aria-pressed',String(yes));});$('skillName').textContent=n?'霜月斩 / 永夜冰葬':'焰掌 / 赤莲焚城';$('skillDesc').textContent=n?'剑尖控距 · 冰结剑气 · 远程牵制':'贴身突进 · 连续拳脚 · 赤焰爆发';$('roleRange').textContent=n?'剑尖 36–60 · 远程 120–300':'贴身 18–40 · 前踏拳脚追击';$('roleWeak').textContent=n?'轻击6帧起手，贴身容易被抢先；剑气可对消':'拳短，远距需跳入或突进接近';$('roleRisk').textContent=n?'重击总长40帧／远程总长35帧，挥空易被突进反击':'突进被挡或落空不能取消，会停在对手面前';$('speedStat').textContent=n?'▰▰▰▱▱':'▰▰▰▰▱';$('rangeStat').textContent=n?'▰▰▰▰▱':'▰▰▱▱▱';state=createState(n,opponent);comboTable();labRoutes();updateHUD();lobbySummary();paintSelectionSides();}
 function setMode(m){if(running||session||connecting)return notice('请先退出当前对局，再切换模式。');cancelSelection();document.body.dataset.view='lobby';document.body.dataset.mode=m;mode=m;window.scrollTo?.({top:0,left:0,behavior:'instant'});notice('');document.querySelectorAll('[data-mode]').forEach(b=>{b.classList.toggle('active',b.dataset.mode===m);b.setAttribute('aria-pressed',String(b.dataset.mode===m));});$('pvpPanel').hidden=m!=='pvp';$('pvePanel').hidden=m!=='pve';$('labPanel').hidden=m!=='lab';$('labWorkbench').hidden=true;$('modeLabel').textContent=m==='pvp'?'ONLINE DUEL':m==='lab'?'COMBO LAB':'AI ARCADE';$('tag1').textContent=m==='pvp'?'RIVAL':'AI';levels();menu();if(m==='pvp')void rooms.refresh();}
-function menu(){battleView(false);lobbySummary();mixer.activity(false,true);finished=false;state=createState(selected,opponent);$('overlay').hidden=false;$('primary').disabled=false;$('primary').textContent=entryText(mode==='pvp'?'create':mode==='lab'?'startLab':level>unlocked?'campaignBaseLocked':'startSolo');document.querySelector('.start-card h2').innerHTML=mode==='pvp'?'像素格斗<br><span>邀请好友，准备开战</span>':mode==='lab'?'连段训练场<br><span>每一次命中，都看得清楚</span>':levelNames[level-1]+'<br><span>'+entryText('campaignAi')+'</span>';$('overlayText').textContent=mode==='pvp'?'选择角色，创建房间或快速匹配。':mode==='lab'?'真实判定框 · 输入记录 · 连击伤害 · 路线练习':tips[level-1];$('trainQuick').hidden=mode!=='pvp';$('pause').hidden=true;$('leave').hidden=true;$('roomBox').hidden=true;$('battleStatus').textContent=mode==='pvp'?'等待挑战者':mode==='lab'?'连段训练 · 无限生命':stageStatus();$('connection').textContent='准备就绪';$('announcement').textContent='';unlockControls();updateHUD();}
+function menu(){battleView(false);lobbySummary();mixer.activity(false,true);finished=false;state=createState(selected,opponent);$('overlay').hidden=false;$('primary').disabled=false;$('primary').textContent=entryText(mode==='pvp'?'create':mode==='lab'?'startLab':level>unlocked?'campaignBaseLocked':'startSolo');document.querySelector('.start-card h2').innerHTML=mode==='pvp'?'像素格斗<br><span>邀请好友，准备开战</span>':mode==='lab'?'连段训练场<br><span>每一次命中，都看得清楚</span>':levelNames[level-1]+'<br><span>'+entryText('campaignAi')+'</span>';$('overlayText').textContent=mode==='pvp'?entryText('roomBeforeSelection'):mode==='lab'?'真实判定框 · 输入记录 · 连击伤害 · 路线练习':tips[level-1];$('trainQuick').hidden=mode!=='pvp';$('pause').hidden=true;$('leave').hidden=true;$('roomBox').hidden=true;$('battleStatus').textContent=mode==='pvp'?'等待挑战者':mode==='lab'?'连段训练 · 无限生命':stageStatus();$('connection').textContent='准备就绪';$('announcement').textContent='';unlockControls();updateHUD();}
 function unlockControls(){$('cancelConnect').hidden=!connecting;$('backHome').disabled=!!session;$('primary').disabled=!artLoaded||connecting||!!session&&!finished||mode==='pve'&&level>unlocked;document.querySelectorAll('[data-fighter],#match,#joinForm button').forEach(b=>b.disabled=!artLoaded||connecting||running||!!session);}
 // Analytics never gates play or handles payments. Solo outcomes are explicitly
 // client-reported; server-issued run credentials make completion idempotent.
@@ -133,7 +133,7 @@ function updateNetworkHUD(){
  setText('battleLatency',entryText(status==='live'?'networkPing':status==='reconnecting'?'networkReconnecting':status==='waiting'?'networkWaiting':'networkPending').replace('{ms}',rtt));
  node.title=entryText('networkRttHint');node.dataset.quality=status!=='live'?'waiting':rtt<100?'good':rtt<250?'fair':'slow';
 }
-function updateHUD(){campaignPanel.update(state,{aiMode:activeCampaignAI,visible:mode==='pve'&&running&&document.body.dataset.view==='battle',level,now:performance.now()});updateNetworkHUD();for(let i=0;i<2;i++){
+function updateHUD(){if(session?.selection)paintOnlineSelection();campaignPanel.update(state,{aiMode:activeCampaignAI,visible:mode==='pve'&&running&&document.body.dataset.view==='battle',level,now:performance.now()});updateNetworkHUD();for(let i=0;i<2;i++){
  const p=pbase(i),hp=Math.max(0,Math.min(MAX_HP,state[p+3])),energy=Math.max(0,Math.min(100,state[p+4])),type=state[p+11]|0,wins=state[4+i],key=hudKeys[i];
  const hud=$('playerHud'+i),hpMeter=$('hpMeter'+i),energyMeter=$('energyMeter'+i);
  if(key.hp!==hp){key.hp=hp;setMeter('hp'+i,hp/MAX_HP*100);setMeter('hpTrail'+i,hp/MAX_HP*100);setText('health'+i,Math.ceil(hp)+' / '+MAX_HP);hud.classList.toggle('low-health',hp<=MAX_HP*.3);hpMeter.setAttribute('aria-valuenow',Math.ceil(hp));}
@@ -146,8 +146,8 @@ function updateHUD(){campaignPanel.update(state,{aiMode:activeCampaignAI,visible
  }const local=pbase(session?.slot??0);setText('abilityStatus',Math.floor(state[local+4])+' 能量 · '+(state[local+4]>=70?'I 必杀就绪':'大招需要 70 能量')+(state[local+26]>0?' · 反击就绪':'')+(state[local+22]>0?' · 冲刺冷却':'')+(state[local+23]>0?' · 小技能冷却':'')+(elementImbued(state,local)?state[local+11]?' · 冰结太刀 · 本小局':' · 火焰附拳 · 本小局':''));setText('timer',mode==='lab'?'∞':String(Math.ceil(state[2]/60)).padStart(2,'0'));setText('round','ROUND '+String(state[3]).padStart(2,'0'));for(let i=0;i<2;i++){const own=i===(session?.slot??0);setText('tag'+i,(i+1)+'P');}}
 function endMatch(){if(finished)return;finished=true;$('resultActions').append($('primary'));running=false;clearCombatInput();const draw=state[7]<0,win=state[7]===(session?.slot??0);if(mode==='pve')monitorEnd(draw?'draw':win?'win':'loss');if(mode==='pve'&&win){cleared=winStage(cleared,level);unlocked=unlockedStage(cleared);saveCampaign(campaignStorage,cleared);levels();}$('overlay').hidden=false;document.querySelector('.start-card h2').innerHTML=mode==='pve'?entryText(draw?'campaignDraw':win?'campaignWin':'campaignLose'):(draw?'势均力敌。':win?'守夜人，胜利。':'火种尚未熄灭。')+'<br><span>'+(win?'下一场，继续前行。':'再来一次。')+'</span>';$('overlayText').textContent=mode==='pve'?entryText(win?(level===STAGE_COUNT?'campaignComplete':level===BASE_STAGES?'campaignBasePass':'campaignPass'):'campaignRetry'):session?.payment&&win?payText('wait'):'服务器已确认本场胜负。';$('primary').disabled=false;$('primary').textContent=entryText(mode==='pve'&&win&&level<STAGE_COUNT?'campaignNext':'campaignBack');$('trainQuick').hidden=true;$('pause').hidden=true;$('battleStatus').textContent=mode==='pve'?entryText(draw?'campaignDraw':win?'campaignWin':'campaignLose'):draw?'对局结束 · 平局':win?'对局结束 · 胜利':'对局结束 · 失败';if(session){session.done=true;clearTimeout(pollTimer);live.close();}unlockControls();}
 async function api(body){const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),['create','join'].includes(body.action)&&body.walletSession?50000:5000);try{const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal});let data;try{data=await r.json();}catch{throw Error('对战服务暂不可用，请稍后再试。');}if(!r.ok)throw Object.assign(Error(text(data.error)||'对战服务暂不可用。'),{status:r.status});return data;}finally{clearTimeout(timeout);}}
-async function connect(kind,code=''){if(session||running||connecting||!artLoaded)return false;if(cleanup.pending){notice('上一房间退出尚未确认，请先点击重试退出。');return false;}connecting=true;unlockControls();mobile.sync();void mixer.unlock();const g=++generation;$('primary').disabled=true;notice(entryText('connectingRoom'));try{const data=await api({action:kind,character:selected,code,walletSession:wallet.state.session,...(kind==='create'?{deposit:payments.choice()}:{} )});if(g!==generation){await cleanup.leave(data);return false;}$('roomPrivacy').textContent=entryText('publicRoom');session={code:data.code,token:data.token,slot:data.slot,done:false,names:data.names,payment:data.payment};document.body.dataset.roomActive='true';seq=0;prediction.reset();state.set(data.state);$('ownRoomLabel').textContent=entryText('yourRoom');$('roomBox').hidden=false;$('primary').textContent=entryText('waitingPrimary');$('leave').hidden=false;$('trainQuick').hidden=true;$('connection').textContent=entryText('roomConnected');notice(entryText('roomCreated'));unlockControls();poll(g);payments.room(data.payment);return true;}catch(e){if(g===generation)notice(e.name==='AbortError'?'连接超时，请稍后重试。':e.message);return false;}finally{if(g===generation){connecting=false;unlockControls();void rooms.refresh();}}}
-async function poll(g){if(!session||g!==generation||session.done)return;syncCombatInput();const streaming=live.fast;if(streaming)pollTimer=setTimeout(()=>poll(g),running?50:450);const started=performance.now(),sentEdges=readyInput.filter(state,edgeBits,waitingPractice);edgeBits=0;try{const data=await live.request({action:'input',code:session.code,token:session.token,seq:++seq,mask:safeMask(),edges:sentEdges});if(!session||g!==generation||session.done)return;if(data.names)session.names=data.names;if(data.payment){session.payment=data.payment;if(data.status==='funding')payments.room(data.payment);}if(data.moved){session.code=data.code;session.slot=data.slot;notice('已匹配到对手。');$('ownRoomLabel').textContent=entryText('yourRoom');}if(Number.isSafeInteger(data.ack)&&data.ack<(session.lastAck??-1))return;if(!prediction.queue(data.state,performance.now(),performance.now()-started,session.slot,safeMask(),data.otherMask||0,data.pendingEdges||0))return;session.lastAck=data.ack;if(!running||data.state[1]===4||document.hidden)flushOnlineState();if(data.status==='playing'||data.status==='finished'){const wasRunning=running;running=data.status==='playing';if(running&&!wasRunning){payments.closed();waitingPractice=false;$('warmupBar').hidden=true;}if(running&&!wasRunning){live.open();battleView(true);mixer.begin(state,false,session.slot);notice('');$('arena').focus({preventScroll:true});}setHidden('roomBox',running);setHidden('overlay',running);setHidden('leave',false);if(!session.statusAt||performance.now()-session.statusAt>=250){session.statusAt=performance.now();setText('connection',(live.fast?'实时连接 · ':'HTTP · ')+Math.round(performance.now()-started)+' ms');}setText('battleStatus',entryText('pvpTitle'));}else if(data.status==='cancelled'){await exit();return notice('对方离开了房间，请重新匹配。');}if(data.warning)notice(data.warning);if(data.state[1]===4)endMatch();session.lastRtt=performance.now()-started;session.networkRecovering=false;diagnostics.add('rtt',session.lastRtt);if(session.lastReceived)diagnostics.add('arrival',performance.now()-session.lastReceived);session.lastReceived=performance.now();session.serverFrame=data.state[0];session.otherMask=data.otherMask||0;session.failures=0;/* Battle HUD is refreshed once by the frame loop. */}catch(e){if(!session||g!==generation)return;if(streaming&&e.transport){session.networkRecovering=true;if(e.unsent)edgeBits|=sentEdges;setText('connection','切换 HTTP 连接…');return;}if(!session.failures)diagnostics.reconnect();session.failures=(session.failures||0)+1;$('connection').textContent='正在重连';notice('连接中断，正在恢复对局…');if(e.status===401||e.status===404||session.failures>=8){await exit();return notice(e.status===401?'房间凭证失效，请重新加入。':'连接恢复失败，请重新进入擂台。');}}finally{if(!streaming&&session&&!session.done&&g===generation)pollTimer=setTimeout(()=>poll(g),Math.max(5,(running?80:450)-(performance.now()-started)));}}
+async function connect(kind,code=''){if(session||running||connecting||!artLoaded)return false;if(cleanup.pending){notice('上一房间退出尚未确认，请先点击重试退出。');return false;}connecting=true;unlockControls();mobile.sync();void mixer.unlock();const g=++generation;$('primary').disabled=true;notice(entryText('connectingRoom'));try{const data=await api({action:kind,character:selected,code,walletSession:wallet.state.session,...(kind==='create'?{deposit:payments.choice(),selectionVersion:1}:{} )});if(g!==generation){await cleanup.leave(data);return false;}$('roomPrivacy').textContent=entryText('publicRoom');session={code:data.code,token:data.token,slot:data.slot,done:false,names:data.names,payment:data.payment};document.body.dataset.roomActive='true';seq=0;prediction.reset();state.set(data.state);$('ownRoomLabel').textContent=entryText('yourRoom');$('roomBox').hidden=false;$('primary').textContent=entryText('waitingPrimary');$('leave').hidden=false;$('trainQuick').hidden=true;$('connection').textContent=entryText('roomConnected');notice(entryText('roomCreated'));unlockControls();poll(g);payments.room(data.payment);return true;}catch(e){if(g===generation)notice(e.name==='AbortError'?'连接超时，请稍后重试。':e.message);return false;}finally{if(g===generation){connecting=false;unlockControls();void rooms.refresh();}}}
+async function poll(g){if(!session||g!==generation||session.done)return;syncCombatInput();const streaming=live.fast;if(streaming)pollTimer=setTimeout(()=>poll(g),running?50:session.selection?150:450);const started=performance.now(),sentEdges=readyInput.filter(state,edgeBits,waitingPractice);edgeBits=0;try{const data=await live.request({action:'input',code:session.code,token:session.token,seq:++seq,mask:safeMask(),edges:sentEdges,...(session.selection?{character:selected,locked:!!session.selectionLocked}:{})});if(!session||g!==generation||session.done)return;if(Number.isSafeInteger(data.ack)&&data.ack<(session.lastAck??-1))return;if(data.names)session.names=data.names;if(data.payment){session.payment=data.payment;if(data.status==='funding'&&!data.selection)payments.room(data.payment);}if(data.selection){session.selection=data.selection;session.selectionClock=data.selection.serverTime-performance.now();showOnlineSelection();}if(data.moved){session.code=data.code;session.slot=data.slot;notice('已匹配到对手。');$('ownRoomLabel').textContent=entryText('yourRoom');}const queued=prediction.queue(data.state,performance.now(),performance.now()-started,session.slot,safeMask(),data.otherMask||0,data.pendingEdges||0);const received=performance.now();if(session.lastReceived)diagnostics.add('arrival',received-session.lastReceived);if(acceptRoomHeartbeat(session,received,received-started))notice('');if(data.status==='waiting'||data.status==='funding')setText('connection',entryText(data.selection?'selectionChoosing':data.status==='funding'?'fundingConnected':'roomConnected'));if(!queued)return;session.lastAck=data.ack;if(!running||data.state[1]===4||document.hidden)flushOnlineState();if(data.status==='playing'||data.status==='finished'){const wasRunning=running;running=data.status==='playing';if(running&&!wasRunning){session.selection=null;session.selectionLocked=false;$('characterSelect').hidden=true;payments.closed();waitingPractice=false;$('warmupBar').hidden=true;}if(running&&!wasRunning){live.open();battleView(true);mixer.begin(state,false,session.slot);notice('');$('arena').focus({preventScroll:true});}setHidden('roomBox',running);setHidden('overlay',running);setHidden('leave',false);if(!session.statusAt||performance.now()-session.statusAt>=250){session.statusAt=performance.now();setText('connection',(live.fast?'实时连接 · ':'HTTP · ')+Math.round(performance.now()-started)+' ms');}setText('battleStatus',entryText('pvpTitle'));}else if(data.status==='cancelled'){const paid=!!session.payment;await exit();return notice(paid?entryText('depositRefundNotice'):entryText('roomCancelled'));}if(data.warning)notice(data.warning);if(data.state[1]===4)endMatch();diagnostics.add('rtt',session.lastRtt);session.serverFrame=data.state[0];session.otherMask=data.otherMask||0;session.failures=0;/* Battle HUD is refreshed once by the frame loop. */}catch(e){if(!session||g!==generation)return;if(streaming&&e.transport){session.networkRecovering=true;if(e.unsent)edgeBits|=sentEdges;setText('connection',entryText('networkFallback'));return;}if(!session.failures)diagnostics.reconnect();session.failures=(session.failures||0)+1;$('connection').textContent=entryText('networkReconnecting');notice(entryText('networkRecoveryNotice'));if(e.status===401||e.status===404||session.failures>=8){await exit();return notice(e.status===401?'房间凭证失效，请重新加入。':'连接恢复失败，请重新进入擂台。');}}finally{if(!streaming&&session&&!session.done&&g===generation)pollTimer=setTimeout(()=>poll(g),Math.max(5,(running?80:session.selection?150:450)-(performance.now()-started)));}}
 // Advancing a local stage must not hide or detach the fullscreen arena.
 async function primaryAction(){
  if(mode==='pve'&&level>unlocked)return;
@@ -197,7 +197,7 @@ function updateShowcase(){
 }
 $('demoMusic').onclick=()=>{if(!mixer.ready){if(!mixer.settings.enabled)mixer.set('enabled',true);if(!mixer.settings.music)mixer.set('music',35);void mixer.unlock();}else mixer.set('music',mixer.settings.music?0:35);};
 // Unlock inside a real gesture; silent settings and a hidden page remain respected.
-for(const event of ['pointerdown','keydown'])document.addEventListener(event,e=>{if(e.target?.closest?.('#demoMusic'))return;if(!mixer.ready)void mixer.unlock();},{capture:true});
+// Audio mixer owns gesture and wallet-return recovery for all game modes.
 $('demoPause').onclick=()=>{demoPaused=!demoPaused;updateShowcase();};
 $('demoNext').onclick=()=>{showcase.next();demoAcc=0;updateShowcase();demoRenderer.draw(showcase.state,performance.now(),false,showcase.damageEvents,0,'lab');};
 function tickShowcase(t,delta){
@@ -223,7 +223,8 @@ let walletPhase='idle',walletIntent=null;
 function requestWallet(intent={purpose:'deposit'}){walletIntent=intent;$('walletPurpose').hidden=intent.purpose!=='deposit';$('walletPurpose').textContent=entryText('depositWallet');$('walletFree').hidden=intent.purpose!=='deposit';$('walletClose').hidden=intent.purpose==='deposit';openPanel('walletDialog');void wallet.prepare().catch(()=>{});}
 function dismissWallet(){walletIntent=null;panels.close($('walletDialog'));}
 
-const wallet=makeOKXConnection({storage:tabStorage,api:authApi,onChange:s=>{
+let walletStorage;try{walletStorage=localStorage;if(!walletStorage.getItem('ember-xlayer-login')&&tabStorage?.getItem('ember-xlayer-login'))walletStorage.setItem('ember-xlayer-login',tabStorage.getItem('ember-xlayer-login'));tabStorage?.removeItem('ember-xlayer-login');}catch{}
+const wallet=makeOKXConnection({storage:walletStorage,api:authApi,onChange:s=>{
  const signedIn=s.phase==='connected'&&walletPhase!=='connected';walletPhase=s.phase;
  document.body.dataset.walletPhase=s.phase;document.body.dataset.walletHandoff=String(s.handoff);$('walletStatus').textContent=s.message;$('walletStatus').hidden=s.phase==='idle'&&s.message===text('idle');$('walletAddress').textContent=s.address;$('walletChain').textContent=s.chain?'X Layer · OKB':'';
  const busy=['loading','connecting','switching','signing','verifying'].includes(s.phase);
@@ -236,6 +237,7 @@ const wallet=makeOKXConnection({storage:tabStorage,api:authApi,onChange:s=>{
  }});
 let nicknameIntent=null;
 function requestNickname(action=null){nicknameIntent=action;$('nicknameInput').value=wallet.state.nickname||'';$('nicknameError').textContent='';panels.show($('nicknameDialog'));}
+$('nicknameDialog').addEventListener('cancel',()=>{nicknameIntent=null;});
 $('editNickname').onclick=()=>requestNickname();$('nicknameClose').onclick=()=>{nicknameIntent=null;panels.close($('nicknameDialog'));};$('nicknameForm').onsubmit=async e=>{e.preventDefault();$('nicknameSave').disabled=true;try{await wallet.setNickname($('nicknameInput').value);$('nicknameInput').blur();const action=nicknameIntent;nicknameIntent=null;panels.close($('nicknameDialog'));if(action)void selectOnline(...action);}catch(err){$('nicknameError').textContent=payText(err.message);}finally{$('nicknameSave').disabled=false;}};
 $('walletTitle').textContent=text('walletTitle');$('walletIntro').textContent=isMobile(window)?text('walletGuide'):entryText('walletDesktopGuide');$('walletMobileHint').textContent=text('mobileHint');$('walletReturn').textContent=text('appReturn');
 $('walletMobileHint').hidden=$('walletReturn').hidden=!isMobile(window)||wallet.injected;
@@ -281,17 +283,57 @@ $('exitConfirm').onclick=async()=>{const target=exitTarget;$('exitConfirm').disa
 $('returnGame').onclick=showHome;
 // Selection is explicit; READY/FIGHT remains part of the unchanged match rules.
 let selectionJob=null;
+function showOnlineSelection(){
+ $('characterSelect').dataset.online='true';
+ const entering=document.body.dataset.view!=='select';
+ if(entering){payments.closed();panels.reset();waitingPractice=false;$('warmupBar').hidden=true;clearCombatInput();selected=session.selection.characters[session.slot];}
+ document.body.dataset.view='select';$('lobby').hidden=$('home').hidden=$('battleView').hidden=true;$('characterSelect').hidden=false;
+ $('opponentChoice').hidden=true;$('selectTitle').textContent=entryText('selectFighter');$('cancelSelection').textContent=entryText(session.payment?'leaveSelection':'leaveFreeSelection');
+ paintOnlineSelection();mobile.sync();
+}
+// Local seat always stays left; the remote seat is display-only, even for player 2.
+function paintSelectionSides(){
+ const v=session?.selection,other=v?1-session.slot:1;
+ const locked=!!(v&&(session.selectionLocked||v.locked[session.slot]));
+ const remote=v?v.characters[other]:opponent;
+ $('rivalLabel').textContent=entryText(v?'selectionOpponent':mode==='lab'?'selectDummy':'selectionCPU');
+ $('selfPlayer').textContent=v?(session.names?.[session.slot]||''):'';
+ $('rivalPlayer').textContent=v?(session.names?.[other]||''):'';
+ $('selfSelectionStatus').textContent=entryText(locked?'selectionLocked':'selectionChoosing');
+ $('rivalSelectionStatus').textContent=entryText(v?(v.locked[other]?'selectionLocked':'selectionChoosing'):'selectionAIChoice');
+ $('opponentChoice').hidden=!!v;
+ for(const [seat,n,dir] of [['self',selected,1],['rival',remote,-1]]){
+  $(seat+'Fighter').textContent=entryText(n?'fighterShuang':'fighterJin');
+  $(seat+'Style').textContent=entryText(n?'fighterShuangStyle':'fighterJinStyle');
+  const canvas=$(seat+'Portrait');
+  if(artLoaded&&canvas.dataset.hero!==String(n)){
+   const ctx=canvas.getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,96,112);ctx.imageSmoothingEnabled=false;ctx.scale(1.5,1.5);fighter(ctx,dir>0?28:36,68,n,dir);canvas.dataset.hero=String(n);
+  }
+ }
+ for(const b of document.querySelectorAll('[data-fighter]')){const active=+b.dataset.fighter===selected;b.disabled=locked;b.setAttribute('aria-pressed',String(active));b.classList.toggle('selected',active);}
+ for(const b of document.querySelectorAll('[data-opponent]'))b.setAttribute('aria-pressed',String(+b.dataset.opponent===opponent));
+}
+function paintOnlineSelection(){
+ const v=session?.selection;if(!v)return;
+ const seconds=Math.max(0,Math.ceil((v.until-(performance.now()+session.selectionClock))/1000));
+ $('selectMode').textContent=entryText('selectionCountdown').replace('{s}',seconds);
+ paintSelectionSides();
+ const locked=session.selectionLocked||v.locked[session.slot];
+ $('confirmSelection').disabled=!!locked;$('confirmSelection').textContent=entryText(locked?'selectionLocked':'confirmFighter');
+}
 function requestSelection(action){
+ delete $('characterSelect').dataset.online;
  if(!artLoaded||running||session||connecting||selectionJob)return Promise.resolve(false);
  clearCombatInput();panels.reset();rooms.invalidate();
  document.body.dataset.view='select';$('lobby').hidden=true;$('home').hidden=true;$('characterSelect').hidden=false;
- $('opponentChoice').hidden=mode==='pvp';$('opponentLabel').textContent=entryText(mode==='lab'?'selectDummy':'selectOpponent');$('selectTitle').textContent=entryText('selectFighter');$('cancelSelection').textContent=entryText('backSetup');
+ paintSelectionSides();$('selectTitle').textContent=entryText('selectFighter');$('cancelSelection').textContent=entryText('backSetup');
  $('selectMode').textContent=mode==='pve'?entryText('stageNumber').replace('{n}',level):entryText(mode==='lab'?'training':'pvpTab');
- $('confirmSelection').disabled=false;window.scrollTo?.({top:0,left:0,behavior:'instant'});mobile.sync();$('confirmSelection').focus({preventScroll:true});
+ $('confirmSelection').textContent=entryText('confirmFighter');$('confirmSelection').disabled=false;window.scrollTo?.({top:0,left:0,behavior:'instant'});mobile.sync();$('confirmSelection').focus({preventScroll:true});
  return new Promise(resolve=>{selectionJob={action,resolve};});
 }
-function cancelSelection(){if(!selectionJob)return;const job=selectionJob;selectionJob=null;$('characterSelect').hidden=true;job.resolve(false);}
+function cancelSelection(){$('characterSelect').hidden=true;if(!selectionJob)return;const job=selectionJob;selectionJob=null;$('characterSelect').hidden=true;job.resolve(false);}
 function confirmSelection(){
+ if(session?.selection){session.selectionLocked=true;paintOnlineSelection();return;}
  if(!selectionJob||document.hidden||panels.open||document.body.dataset.view!=='select')return;
  $('confirmSelection').disabled=true;
  const job=selectionJob;selectionJob=null;$('characterSelect').hidden=true;document.body.dataset.view='lobby';$('lobby').hidden=false;
@@ -302,16 +344,16 @@ function selectOnline(kind,code='',deposit){
  if(deposit&&wallet.state.phase!=='connected'){requestWallet({purpose:'deposit',action:[kind,code,true]});return Promise.resolve(false);}
  if(deposit&&!wallet.state.nickname){requestNickname([kind,code,true]);return Promise.resolve(false);}
  if(kind==='create'&&!payments.enabled){notice(payText('ESCROW_UNAVAILABLE'));return Promise.resolve(false);}
- return requestSelection(()=>connect(kind,code));
+ return connect(kind,code);
 }
 $('confirmSelection').onclick=confirmSelection;
-$('cancelSelection').onclick=()=>{cancelSelection();document.body.dataset.view='lobby';menu();};
-for(const b of document.querySelectorAll('[data-opponent]'))b.onclick=()=>{opponent=+b.dataset.opponent;for(const button of document.querySelectorAll('[data-opponent]'))button.setAttribute('aria-pressed',String(+button.dataset.opponent===opponent));};
+$('cancelSelection').onclick=()=>{if(session?.selection){void exit();return;}cancelSelection();document.body.dataset.view='lobby';menu();};
+for(const b of document.querySelectorAll('[data-opponent]'))b.onclick=()=>{if(session)return;opponent=+b.dataset.opponent;paintSelectionSides();};
 // Preserve multi-touch combat input while blocking native pinch/double-tap zoom.
 const preventGesture=e=>{if(e.cancelable)e.preventDefault();};
 for(const type of ['gesturestart','gesturechange','gestureend','dblclick'])document.addEventListener(type,preventGesture,{passive:false});
 document.addEventListener('touchmove',e=>{if(e.touches.length>1)preventGesture(e);},{passive:false});
-updateAudioUI();character(0);setMode(['pvp','lab'].includes(new URL(location.href).searchParams.get('mode'))?new URL(location.href).searchParams.get('mode'):'pve');Promise.all([artReady,stageReady]).then(()=>{artLoaded=true;for(let i=0;i<2;i++){const p=$('portrait'+i).getContext('2d');p.imageSmoothingEnabled=false;p.scale(1.75,1.75);fighter(p,23,62,i,1);}unlockControls();$('connection').textContent='准备就绪';updateShowcase();demoRenderer.draw(showcase.state,0,false,showcase.damageEvents,0,'lab');delete document.body.dataset.boot;requestAnimationFrame(frame);}).catch(e=>{notice(e.message);$('connection').textContent='资源加载失败';$('primary').disabled=true;document.querySelector('#bootScreen p').textContent=entryText('bootFailed');});
+updateAudioUI();character(0);setMode(['pvp','lab'].includes(new URL(location.href).searchParams.get('mode'))?new URL(location.href).searchParams.get('mode'):'pve');Promise.all([artReady,stageReady]).then(()=>{artLoaded=true;paintSelectionSides();unlockControls();$('connection').textContent='准备就绪';updateShowcase();demoRenderer.draw(showcase.state,0,false,showcase.damageEvents,0,'lab');delete document.body.dataset.boot;requestAnimationFrame(frame);}).catch(e=>{notice(e.message);$('connection').textContent='资源加载失败';$('primary').disabled=true;document.querySelector('#bootScreen p').textContent=entryText('bootFailed');});
 if(document.modelContext?.registerTool){const controller=new AbortController();const tools=[{name:'read_arena_status',description:'读取当前擂台模式、训练关卡及房间状态。',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:()=>({mode,level,running,room:session?.code??null})},{name:'start_training',description:'选择已解锁关卡并开始本地 AI 训练。',inputSchema:{type:'object',properties:{level:{type:'integer',minimum:1,maximum:STAGE_COUNT}},required:['level'],additionalProperties:false},execute:input=>{if(!Number.isInteger(input.level)||input.level<1||input.level>unlocked)throw Error('关卡未解锁');if(running||session)throw Error('请先退出当前对局');level=input.level;chapter=level>BASE_STAGES?1:0;setMode('pve');beginTraining();return {mode,level,running};}}];for(const tool of tools)try{Promise.resolve(document.modelContext.registerTool(tool,{signal:controller.signal})).catch(()=>{});}catch{}addEventListener('pagehide',()=>controller.abort(),{once:true});}
 
 

@@ -1,5 +1,5 @@
-import {text,guideText} from './experience-text.mjs?v=06fc8452cd83ba41';
-import {isMobile} from './wallet.mjs?v=1b27b877c8c9e6fd';
+import {text,guideText} from './experience-text.mjs?v=70f922bbef6f5838';
+import {isMobile} from './wallet.mjs?v=e707770b310144b6';
 export const standalone=win=>win.navigator.standalone===true||['standalone','minimal-ui'].some(mode=>win.matchMedia(`(display-mode: ${mode})`).matches);
 export function nextGuide({mobile,app,portrait,installDone,rotateDone,walletDone,pvp,deposit=false,connected,busy}){
  if(busy)return null;if(mobile&&!app&&!installDone)return 'install';if(mobile&&app&&portrait&&!rotateDone)return 'rotate';if(pvp&&deposit&&!connected&&!walletDone)return 'wallet';return null;

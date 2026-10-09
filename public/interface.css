@@ -679,26 +679,34 @@ body[data-showcase="true"] #lobby .entry-intro{font-size:12px;line-height:1.5}
  body[data-mode="pvp"] #lobby .room-hall{max-height:none;padding-top:10px;min-height:0}body[data-mode="pvp"] #lobby .room-list{flex:1;max-height:none}
  body[data-view="lobby"] #lobby .site-actions{gap:5px;margin-top:8px}body[data-view="lobby"] #lobby .site-actions a,body[data-view="lobby"] #entryLab{font-size:11px;padding:5px;min-height:36px}
 }
-/* Two fighter cards, a name-only AI selector, then confirmation. */
-body[data-view="select"] .character-select{display:flex;flex-direction:column;gap:14px;width:min(780px,100%);max-height:100%;padding:18px;border:2px solid #7896a6;background:#112b41ee;box-shadow:5px 5px 0 #081928}
-.character-select .select-heading{margin:0;text-align:center;justify-content:center}
-.character-select .select-heading h1{font-size:24px;color:#ffe2a1}.character-select .select-heading p{font-size:12px}
-.character-select .roster{padding:0;border:0;background:none;box-shadow:none;min-height:0;flex:1}
-.character-select .fighters{display:grid;grid-template-columns:1fr 1fr;gap:14px;height:100%}
-.character-select .fighter{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;position:relative;border:2px solid #638497;border-radius:0;background:#193c55;min-height:0;padding:12px}
-.character-select .fighter.selected{border-color:#ffd887;background:#584337;box-shadow:inset 0 -5px #bd8c47}
-.character-select .fighter canvas{width:auto;height:clamp(80px,24vh,180px);aspect-ratio:6/7;max-height:60%;image-rendering:pixelated}
-.character-select .fighter b{font-size:24px;display:block;text-align:center}.character-select .fighter div>span{font-size:12px}.character-select .fighter i{position:absolute;right:8px;top:8px}
-.character-select .opponent-choice{margin:0;gap:10px;flex:none}.character-select .opponent-choice button{min-width:80px;padding:6px 14px;border-radius:0}
-.selection-actions{display:flex;justify-content:center;gap:12px;flex:none}.selection-actions button{min-height:44px}.selection-actions #confirmSelection{min-width:180px}.selection-actions #cancelSelection{margin:0}
+/* Each participant owns one half of the selection screen. */
+body[data-view="select"] .character-select{display:flex;flex-direction:column;gap:12px;width:min(900px,100%);max-height:100%;padding:16px;border:2px solid #7896a6;background:#112b41f5;box-shadow:5px 5px 0 #081928}
+.character-select .select-heading{margin:0;text-align:center;justify-content:center;flex:none}
+.character-select .select-heading h1{font-size:22px;color:#ffe2a1}.character-select .select-heading p{font-size:12px;margin:3px 0 0}
+.selection-sides{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;min-height:0;flex:1}
+.selection-seat{display:flex;flex-direction:column;min-width:0;min-height:0;padding:12px;border:2px solid #c5a768;background:linear-gradient(135deg,#493d32,#152e43 70%);color:#ffe2a1}
+.selection-seat.rival{border-color:#76bfd1;background:linear-gradient(225deg,#264959,#152e43 70%);color:#b4eafa}
+.selection-seat>header{display:flex;align-items:center;gap:8px;min-width:0;font-size:14px;flex:none}.selection-seat>header>b{white-space:nowrap}.selection-seat>header>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c4d4df;font-size:12px}
+.selected-hero{display:flex;flex:1;min-height:0;flex-direction:column;align-items:center;justify-content:center;padding:8px 0}
+.selected-hero canvas{width:auto;height:clamp(90px,26vh,220px);aspect-ratio:6/7;image-rendering:pixelated;min-height:0}
+.selected-hero h2{font-size:22px;line-height:1.25;text-align:center;margin:4px 0}.selected-hero p{font-size:12px;text-align:center;color:#b9cbd8;margin:0}
+.seat-status{font-size:12px;line-height:18px;min-height:18px;margin:4px 0 8px;text-align:center;flex:none}
+.character-select .fighters,.character-select .opponent-choice{height:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0;flex:none}
+.character-select .fighters button,.character-select .opponent-choice button{position:static;display:block;min-width:0;min-height:40px;padding:6px 4px;border:1px solid #638497;border-radius:0;font-size:13px;line-height:18px;background:#183349;color:#e2eced}
+.character-select .fighter.selected{border-color:#ffe2a1;background:#695034;color:#fff1c6;box-shadow:inset 0 -3px #bd8c47}
+.character-select .opponent-choice button[aria-pressed="true"]{border-color:#9de8fa;background:#31586a;color:#e4fbff;box-shadow:inset 0 -3px #76bfd1}
+.character-select[data-online="true"] .rival .seat-status{min-height:40px;display:grid;place-items:center;margin-bottom:0;border:1px solid #52788b;background:#112b41}
+.character-select .fighter:disabled{opacity:1;cursor:default}
+.selection-actions{display:flex;justify-content:center;gap:12px;flex:none}.selection-actions button{min-height:42px}.selection-actions #confirmSelection{min-width:180px}.selection-actions #cancelSelection{margin:0}
 @media(orientation:landscape) and (max-height:600px){
- body[data-view="select"] .character-select{gap:8px;padding:10px;height:100%}.character-select .select-heading h1{font-size:18px}.character-select .select-heading p{display:none}
- .character-select .fighter{flex-direction:row;padding:6px;gap:12px}.character-select .fighter canvas{height:min(130px,30vh);max-height:100%}.character-select .fighter b{font-size:20px}
- .character-select .opponent-choice{font-size:12px;gap:8px}.character-select .opponent-choice button{min-height:32px;padding:4px 12px}.selection-actions button,.selection-actions #confirmSelection{min-height:34px;padding:5px 10px;font-size:12px}
+ body[data-view="select"] .character-select{height:100%;gap:6px;padding:8px}.character-select .select-heading h1{font-size:17px}.character-select .select-heading p{font-size:11px}
+ .selection-sides{gap:8px}.selection-seat{padding:6px 8px}.selection-seat>header{font-size:12px}.selected-hero{flex-direction:row;gap:8px;padding:0}.selected-hero canvas{height:100%;max-height:130px;max-width:40%;object-fit:contain}.selected-hero h2{font-size:18px}.selected-hero p{font-size:10px}
+ .seat-status{margin:0 0 4px;font-size:10px;min-height:14px;line-height:14px}.character-select .fighters button,.character-select .opponent-choice button{min-height:30px;padding:3px;font-size:11px;line-height:18px}.character-select[data-online="true"] .rival .seat-status{min-height:30px}
+ .selection-actions button,.selection-actions #confirmSelection{min-height:32px;padding:4px 10px;font-size:12px}
 }
 @media(orientation:portrait){
- body[data-view="select"] .character-select{height:auto;max-height:100%;gap:12px;padding:14px}.character-select .fighter canvas{height:24vh;max-height:180px}.character-select .fighter b{font-size:20px}.character-select .fighter{padding:10px}
- .character-select .opponent-choice{flex-wrap:nowrap;gap:7px;font-size:12px}.character-select .opponent-choice button{min-width:60px}.selection-actions{gap:8px}.selection-actions #confirmSelection{min-width:0;flex:1}.selection-actions button{font-size:12px;padding:8px}
+ body[data-view="select"] .character-select{padding:10px;gap:10px}.selection-sides{gap:8px}.selection-seat{padding:8px 6px}.selection-seat>header{flex-direction:column;align-items:flex-start;gap:2px}.selection-seat>header>span{max-width:100%}
+ .selected-hero canvas{height:min(27vh,190px);max-width:100%;object-fit:contain}.selected-hero h2{font-size:18px}.selected-hero p{font-size:10px}.character-select .fighters button,.character-select .opponent-choice button{font-size:11px;padding:4px 1px}.selection-actions{gap:8px}.selection-actions #confirmSelection{min-width:0;flex:1}.selection-actions button{font-size:12px;padding:8px}
 }
 /* Compact training HUD. Full sequence stays visible; detailed stats live in lab settings. */
 /* Reserve the central menu lane independently of the right safe area. */
@@ -824,3 +832,14 @@ body[data-mode="lab"] #battleCoach[data-status="failed"] header{display:none}
  body.mobile-battle[data-mode="pve"] .touch .attack-disc .touch-light:not(.pressed){background:#294b6199}
  body.mobile-battle[data-mode="pve"] .touch .attack-disc .touch-heavy:not(.pressed){background:#563f3599}
 }
+
+
+/* One reachable close control per dialog, including scrollable mobile dialogs. */
+dialog>.dialog-x{position:sticky;inset:auto;top:0;float:right;z-index:30;display:grid;place-items:center;flex:none;align-self:flex-end;width:40px;min-width:40px;height:40px;min-height:40px;margin:0 0 4px 12px;padding:0;border:1px solid #9bb5c3;border-radius:5px;background:#142b40;color:#f4e1aa;box-shadow:none;font-size:28px;font-weight:400;line-height:1;touch-action:manipulation}
+dialog>.dialog-x:hover{background:#29475d}dialog>.dialog-x:focus-visible{outline:2px solid #ffe275;outline-offset:2px}
+dialog>.dialog-x~h2,dialog>.dialog-x~form>h2{min-height:40px;padding-right:52px}
+.experience-dialog>.dialog-x{position:absolute;top:8px;right:8px;margin:0}.experience-dialog>.guide-header{padding-right:60px}
+@media(orientation:landscape) and (max-height:500px){dialog>.dialog-x{width:36px;min-width:36px;height:36px;min-height:36px;font-size:26px}dialog>.dialog-x~h2,dialog>.dialog-x~form>h2{min-height:36px}.experience-dialog>.dialog-x{top:6px;right:8px}}
+#paymentDialog>.dialog-x{margin-bottom:-50px}
+@media(orientation:landscape) and (max-height:500px){#paymentDialog>.dialog-x{margin-bottom:-46px}}
+@media(max-height:330px){#paymentDialog>.dialog-x{margin-bottom:-41px}}

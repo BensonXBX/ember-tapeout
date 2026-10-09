@@ -1,0 +1,336 @@
+{
+  "version": "1.3-scan.5",
+  "format": 1,
+  "entry": "index.html",
+  "entryLast": true,
+  "depositRoomsEnabled": true,
+  "apiOrigin": "https://tapeoutexplorer.com",
+  "totalBytes": 1129497,
+  "totalChunks": 90,
+  "files": [
+    {
+      "path": "code/arena.a70ff8af2d5e918b.mjs.gz.bin",
+      "bytes": 21179,
+      "sha256": "a70ff8af2d5e918b9602acc6f024a3dbe0bfedac93b7488f2cac6e3739298d5f",
+      "chunks": 1
+    },
+    {
+      "path": "code/attack-art.05d3c7aec404e73d.mjs.gz.bin",
+      "bytes": 2342,
+      "sha256": "05d3c7aec404e73d9901f6b92d76d028e4343caad112a1770dc9d5519c0b26a1",
+      "chunks": 1
+    },
+    {
+      "path": "code/audio-events.fbc7ef48bbb84453.mjs.gz.bin",
+      "bytes": 925,
+      "sha256": "fbc7ef48bbb84453fe6c382575c228e6f725023bad489bf893b6f7b2e043123a",
+      "chunks": 1
+    },
+    {
+      "path": "code/audio.2cddbd7299487246.mjs.gz.bin",
+      "bytes": 4445,
+      "sha256": "2cddbd729948724605367c5116e6d2e03a26e47a06a2dc269715e2d2b8c85f87",
+      "chunks": 1
+    },
+    {
+      "path": "code/campaign.f3271e5797e15a2b.mjs.gz.bin",
+      "bytes": 7964,
+      "sha256": "f3271e5797e15a2b89eeaff802ea930962659104b2c2a0cf41be952b9cafe015",
+      "chunks": 1
+    },
+    {
+      "path": "code/combos.e510d60c33df476c.mjs.gz.bin",
+      "bytes": 1276,
+      "sha256": "e510d60c33df476c174dbaf3a98ef8facc30d9c6f4dd536759bd7dcb071d9396",
+      "chunks": 1
+    },
+    {
+      "path": "code/costumes.b80c3cf50865a829.mjs.gz.bin",
+      "bytes": 922,
+      "sha256": "b80c3cf50865a829a5d3dc8b46858f672feeaefbb2268fe72d8c3f9e8d063c8d",
+      "chunks": 1
+    },
+    {
+      "path": "code/dash-pose.6782820fccfe3f03.mjs.gz.bin",
+      "bytes": 552,
+      "sha256": "6782820fccfe3f03ca16a74eb99a602d7d935d91c2b4893df12d43cd28d7e030",
+      "chunks": 1
+    },
+    {
+      "path": "code/diagnostics.2dbf276162a82260.mjs.gz.bin",
+      "bytes": 462,
+      "sha256": "2dbf276162a822609d40e90f972805b1efdfd726976cd87f4c1b6a4bf406af1f",
+      "chunks": 1
+    },
+    {
+      "path": "code/effects.e366ffc5463501fe.mjs.gz.bin",
+      "bytes": 5766,
+      "sha256": "e366ffc5463501fe4bd9d63c9f9f75cd009c5fb20efe4fd6bf6a082cbe197bea",
+      "chunks": 1
+    },
+    {
+      "path": "code/element-attachment.b487e2669d1022c9.mjs.gz.bin",
+      "bytes": 1813,
+      "sha256": "b487e2669d1022c91c2d8fff5fac3038ebfc564e39d2449f94eaaacd0a5b322b",
+      "chunks": 1
+    },
+    {
+      "path": "code/engine.7f54513c53a935b3.mjs.gz.bin",
+      "bytes": 8495,
+      "sha256": "7f54513c53a935b374fe95383b1b1b86d5d043ab4419751c2d3facd4d230ed22",
+      "chunks": 1
+    },
+    {
+      "path": "code/experience-text.e0b158a2e3687ccc.mjs.gz.bin",
+      "bytes": 13356,
+      "sha256": "e0b158a2e3687ccc2048a40fd4ab5bd9537022d4a85766d15827afb24d5c3133",
+      "chunks": 1
+    },
+    {
+      "path": "code/experience.a34cdd857093a965.mjs.gz.bin",
+      "bytes": 2625,
+      "sha256": "a34cdd857093a965e7c47a27e1675cbdc4d3d6b62bf90f06e843dc937af88f0d",
+      "chunks": 1
+    },
+    {
+      "path": "code/feature-policy.05ec78da285af50f.mjs.gz.bin",
+      "bytes": 133,
+      "sha256": "05ec78da285af50ff94c41c9624c470b3ae4abe63ae03f14ec969d916ca8f58e",
+      "chunks": 1
+    },
+    {
+      "path": "code/fighters.ad9553e6f53715bc.mjs.gz.bin",
+      "bytes": 3589,
+      "sha256": "ad9553e6f53715bcbf7fbc8ae81bd711c9624d5fa17b7a2b9d1f398a31e1a734",
+      "chunks": 1
+    },
+    {
+      "path": "code/finale.ba51d2008992d62c.mjs.gz.bin",
+      "bytes": 1325,
+      "sha256": "ba51d2008992d62c21417977256c75fa4e36a0b54f5b29ba29523bf57e63f3b2",
+      "chunks": 1
+    },
+    {
+      "path": "code/frame-budget.a291eb842797366a.mjs.gz.bin",
+      "bytes": 280,
+      "sha256": "a291eb842797366abf09d3435cb28a0d4309d748d1cd29b71a6014f12fe4d466",
+      "chunks": 1
+    },
+    {
+      "path": "code/hitboxes.6b7790111eac2add.mjs.gz.bin",
+      "bytes": 1540,
+      "sha256": "6b7790111eac2addb3a3ccfede67a00a12c4bc1c0cb9961aa05bd787538e3141",
+      "chunks": 1
+    },
+    {
+      "path": "code/identity.1f36dab0e3d3cc80.mjs.gz.bin",
+      "bytes": 318,
+      "sha256": "1f36dab0e3d3cc80067274a49ebf509d9d73745cd0a6c32fc9cfcc076194965b",
+      "chunks": 1
+    },
+    {
+      "path": "code/impact.dae64f0fadec5b58.mjs.gz.bin",
+      "bytes": 549,
+      "sha256": "dae64f0fadec5b5857b9557d81dd243e540e7fa2832f2c2acefe3f298539e51d",
+      "chunks": 1
+    },
+    {
+      "path": "code/lobby.6969e43d214d1cc6.mjs.gz.bin",
+      "bytes": 1078,
+      "sha256": "6969e43d214d1cc66dfa747ed450029a6cfc3e3743052dbc62c9a560205f0b90",
+      "chunks": 1
+    },
+    {
+      "path": "code/menu.dbfe5fda557f82e3.mjs.gz.bin",
+      "bytes": 836,
+      "sha256": "dbfe5fda557f82e3d9e08a4d2d53d03ced52a1e009af615c1f2e7af571ea2104",
+      "chunks": 1
+    },
+    {
+      "path": "code/mobile.f165ba224aee81f5.mjs.gz.bin",
+      "bytes": 2190,
+      "sha256": "f165ba224aee81f5657c5bf61fe1c8e40f80267aea97a4d3e6a1a5d905193a51",
+      "chunks": 1
+    },
+    {
+      "path": "code/music.59b5282dad5138d9.mjs.gz.bin",
+      "bytes": 1169,
+      "sha256": "59b5282dad5138d9b4e0806a13a53790ec69ede1b0e2ba1b3d5209ee4b235118",
+      "chunks": 1
+    },
+    {
+      "path": "code/payments.0d28086104e6c42e.mjs.gz.bin",
+      "bytes": 8630,
+      "sha256": "0d28086104e6c42e8d66c9677429595ec82560327f764b3e9c84004ea55b88c7",
+      "chunks": 1
+    },
+    {
+      "path": "code/prediction.b68e19699cc6cfca.mjs.gz.bin",
+      "bytes": 1520,
+      "sha256": "b68e19699cc6cfca38d32f6a11db6f9bc1be8f597d5b9e9ae4becab293c9e666",
+      "chunks": 1
+    },
+    {
+      "path": "code/ready-preview.709ab75ff4f02b23.mjs.gz.bin",
+      "bytes": 491,
+      "sha256": "709ab75ff4f02b23f5be5c7034572da566dbd198cffc88a642d5d345c5ada3c6",
+      "chunks": 1
+    },
+    {
+      "path": "code/render.2073ccbbf154e490.mjs.gz.bin",
+      "bytes": 3852,
+      "sha256": "2073ccbbf154e4908fce0da8ef34060b95b135510a7541a8a1fcd67f5a3f7f2f",
+      "chunks": 1
+    },
+    {
+      "path": "code/room-cleanup.8c3abb6fbdbafba3.mjs.gz.bin",
+      "bytes": 570,
+      "sha256": "8c3abb6fbdbafba38c04f85e1520589c981b974b0a2bbeaf2c87b6895e8ebf8c",
+      "chunks": 1
+    },
+    {
+      "path": "code/socket-transport.d80e3165094fc3e6.mjs.gz.bin",
+      "bytes": 1341,
+      "sha256": "d80e3165094fc3e64ec53c5ed1db9a40472a2587e81da4c20635a55fe594237b",
+      "chunks": 1
+    },
+    {
+      "path": "code/stage.7c813e784fd6c1cc.mjs.gz.bin",
+      "bytes": 411,
+      "sha256": "7c813e784fd6c1cc32c1387a0f3cc6468cb7e3f0c915928714a8e106b785d799",
+      "chunks": 1
+    },
+    {
+      "path": "code/super-art.1339f4f419bdf545.mjs.gz.bin",
+      "bytes": 2209,
+      "sha256": "1339f4f419bdf5457ca540ac623ea082317317b89c4f267066826abf1bf35f24",
+      "chunks": 1
+    },
+    {
+      "path": "code/super-title.adc3956c9db5547d.mjs.gz.bin",
+      "bytes": 461,
+      "sha256": "adc3956c9db5547d1ab2646d3c487cde422b15e903f942dc0ce55aded4e6456c",
+      "chunks": 1
+    },
+    {
+      "path": "code/training.8de11a742e328a4b.mjs.gz.bin",
+      "bytes": 4410,
+      "sha256": "8de11a742e328a4b8bc96498f93cde0e470f4c803ddb768b83c36d251c418d1f",
+      "chunks": 1
+    },
+    {
+      "path": "code/vendor-okx-connect.ab0ea11b50ecb825.mjs.gz.bin",
+      "bytes": 188187,
+      "sha256": "ab0ea11b50ecb82559e319a558bca51d8f7f3bee5965640f4767dc539d21bdde",
+      "chunks": 8
+    },
+    {
+      "path": "code/viewport.a74f54e360d19a9e.mjs.gz.bin",
+      "bytes": 1522,
+      "sha256": "a74f54e360d19a9e8a1a5b7e1be73a1e2d6ae55342f6783ba5300c2bc753f859",
+      "chunks": 1
+    },
+    {
+      "path": "code/wallet.81125c78514c7b84.mjs.gz.bin",
+      "bytes": 3446,
+      "sha256": "81125c78514c7b846f783d7264594166f9f73b906d0eedd319cd354a5d28abcf",
+      "chunks": 1
+    },
+    {
+      "path": "install/app.7cce87a06dee1959.webmanifest",
+      "bytes": 399,
+      "sha256": "7cce87a06dee1959f520a5954d944d2fde9a046e02196a5a78ee5419657a8b22",
+      "chunks": 1
+    },
+    {
+      "path": "licenses/third-party.ceb09d90555c0b30.txt.gz.bin",
+      "bytes": 18728,
+      "sha256": "ceb09d90555c0b301372af62ee6681b8fa5b65ab0d830d74993ea67f4acc1d14",
+      "chunks": 1
+    },
+    {
+      "path": "media/app-192.460b15c327ef9c13.png",
+      "bytes": 2704,
+      "sha256": "460b15c327ef9c137d92ca2953420f0e802da6127147e774ea63c47e1d21bec1",
+      "chunks": 1
+    },
+    {
+      "path": "media/app-512.ef2b700108d0497e.png",
+      "bytes": 10476,
+      "sha256": "ef2b700108d0497e8e7a6337b6dc1877cac10372c606e05a4fac7c219a09c820",
+      "chunks": 1
+    },
+    {
+      "path": "media/arena-backdrop-v47.9d49fba96f03e768.webp",
+      "bytes": 92424,
+      "sha256": "9d49fba96f03e7687c425c6a6a4b589803bd8effb4c11c6fb2c398a3c40ee570",
+      "chunks": 4
+    },
+    {
+      "path": "media/courtyard-v13.35d270211dc85292.png",
+      "bytes": 154252,
+      "sha256": "35d270211dc85292db51da278e49a9df5ba5d97946f7f685505d68d047909c5f",
+      "chunks": 7
+    },
+    {
+      "path": "media/ember-logo.a544d3fa1358b74c.svg",
+      "bytes": 6722,
+      "sha256": "a544d3fa1358b74ce9caa788ed1e7099df366589cc1f2c87ed9f13cb5dad63c6",
+      "chunks": 1
+    },
+    {
+      "path": "media/favicon.1907e0508483ee71.svg",
+      "bytes": 195,
+      "sha256": "1907e0508483ee71d3da8221ace0b7cb565366b1c7041855f0a8a89c66a28793",
+      "chunks": 1
+    },
+    {
+      "path": "media/fighters-v34.951b879c4b76e12f.png",
+      "bytes": 399005,
+      "sha256": "951b879c4b76e12f10819502690a5e219e98d82649a64d057cfa005174ab37eb",
+      "chunks": 17
+    },
+    {
+      "path": "media/logo-c89c706f.c89c706f8d895e8e.png",
+      "bytes": 50195,
+      "sha256": "c89c706f8d895e8e81c3d0da563bdd04e6b310f8d9278a865a89deda89e92799",
+      "chunks": 3
+    },
+    {
+      "path": "page/arena.b290883d66ffd479.html.gz.bin",
+      "bytes": 47304,
+      "sha256": "b290883d66ffd479784bce06b83eb795a30b18d3640795769070b2f8142b1da9",
+      "chunks": 2
+    },
+    {
+      "path": "release/manifest.9706e3813d8e952c.json.gz.bin",
+      "bytes": 5041,
+      "sha256": "9706e3813d8e952cac05ac9e86637e26be3194dd430409a2209384fd9c6b398f",
+      "chunks": 1
+    },
+    {
+      "path": "runtime/loader.1d8de3fdaa3a771e.js",
+      "bytes": 4031,
+      "sha256": "1d8de3fdaa3a771e0700e04fa0230bad165d649b900f0933013e371729f216c8",
+      "chunks": 1
+    },
+    {
+      "path": "styles/arena.0aed88e570102cb2.css.gz.bin",
+      "bytes": 9776,
+      "sha256": "0aed88e570102cb20f43ee0e8c6f120bca26b17ab3e50d990fc590e40a02b461",
+      "chunks": 1
+    },
+    {
+      "path": "styles/interface.10488243f0419683.css.gz.bin",
+      "bytes": 24963,
+      "sha256": "10488243f0419683417d659a401d106189af446bc325380901b5cde11ee630e6",
+      "chunks": 2
+    },
+    {
+      "path": "index.html",
+      "bytes": 1103,
+      "sha256": "d749b45cd400cdd4e6d1829ec82e7a053d55ffdf467c993fd0d765c651b83ccd",
+      "chunks": 1
+    }
+  ]
+}

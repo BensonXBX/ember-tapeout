@@ -27,5 +27,13 @@
     "gates": 3,
     "state": 0
   },
-  "scope": "Factory deployment and an existing three-gate tapeout. This is not the game AI netlist; game AI runs locally. DeWeb upload is pending."
+  "scope": "Historical factory deployment and existing three-gate tapeout. This is not the game AI netlist; AI runs locally. Website publication is recorded separately below.",
+  "publication": {
+    "evidence": "user_reported",
+    "recordedAt": "2026-10-10",
+    "url": "https://2-2-300.deweb.tapeoutexplorer.com/",
+    "container": "0x7e4d62673bb9894c5c62dd26495a0c0903a5a7e1",
+    "sourceRelease": "1.3-scan.5",
+    "note": "The owner reports the X Layer DeWeb game is published. This is separate from the historical deployment observation above."
+  }
 }

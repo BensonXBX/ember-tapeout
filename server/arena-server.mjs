@@ -1,5 +1,5 @@
 import {allowOrigin} from './network-policy.mjs';
-import {finishPayment} from './finance.mjs';
+import {finishPayment,readyDeposits} from './finance.mjs';
 import {authenticate,nickname} from './auth.mjs';
 import { createState, start, step, validMask, MAX_MASK, ACTION_MASK } from '../public/engine.mjs';
 class GameError extends Error {
@@ -18,7 +18,7 @@ function event(p, slot, kind, now) { p.flags[slot]++; p.logs.push({ frame: p.s[0
     p.logs.shift(); }
 async function read(db, code) { return db.prepare("SELECT r.*,coalesce(a.bannedUntil,0) ban0,coalesce(b.bannedUntil,0) ban1 FROM arena_rooms r LEFT JOIN ember_players a ON a.id=coalesce(nullif(json_extract(r.payload,'$.wallets[0]'),''),'guest:'||substr(json_extract(r.payload,'$.tokens[0]'),1,16)) LEFT JOIN ember_players b ON b.id=coalesce(nullif(json_extract(r.payload,'$.wallets[1]'),''),'guest:'||substr(json_extract(r.payload,'$.tokens[1]'),1,16)) WHERE code=?").bind(code).first(); }
 async function save(db, row, p, status, now) { finishPayment(p,status,now);return (await db.prepare('UPDATE arena_rooms SET payload = ?, status = ?, version = version + 1, updated = ?, expires = ? WHERE code = ? AND version = ?').bind(JSON.stringify(p), status, now, now + 600000, row.code, row.version).run()).meta.changes === 1; }
-function publicState(row, p, slot) { return { code: row.code, slot, status: row.status, state: p.s,names:p.names||['',''], payment:p.payment?{key:p.payment.key,asset:p.payment.asset,stake:p.payment.stake,fundUntil:p.payment.fundUntil,paid:p.payment.paid}:null,otherMask: p.m[1 - slot], ack: p.seq[slot], pendingEdges: p.pulse[slot], warning: p.flags[slot] ? '服务器已记录 ' + p.flags[slot] + ' 次异常输入。' : undefined }; }
+function publicState(row, p, slot) { return { code: row.code, slot, status: row.status, state: p.s,names:p.names||['',''], selection:p.selection?{...p.selection,serverTime:Date.now()}:null,payment:p.payment?{key:p.payment.key,asset:p.payment.asset,stake:p.payment.stake,fundUntil:p.payment.fundUntil,paid:readyDeposits(p.payment)}:null,otherMask: p.m[1 - slot], ack: p.seq[slot], pendingEdges: p.pulse[slot], warning: p.flags[slot] ? '服务器已记录 ' + p.flags[slot] + ' 次异常输入。' : undefined }; }
 function advance(p, now) { const s = new Float32Array(p.s), frames = Math.min(36000, Math.max(0, Math.floor((now - p.last) * 60 / 1000))); for (let n = 0; n < frames; n++) {
     const frameAt = p.last + (n + 1) * 1000 / 60;
     for (let i = 0; i < 2; i++)
@@ -103,7 +103,7 @@ export async function handleArena(request, db, allowedOrigins = [], finance = nu
                 if (typeof target !== 'string' || !codePattern.test(target))
                     throw new GameError('房间码格式无效。');
                 const admission=await read(db,target);const deposit=admission?JSON.parse(admission.payload).payment:null;
-                if(deposit){if(finance?.public().depositRoomsEnabled===false)throw new GameError('DEPOSITS_UNAVAILABLE');wallet=await authenticate(db,body.walletSession,origin||new URL(request.url).origin,now);if(!playerName)throw new GameError('NICKNAME_REQUIRED');if(!finance?.public().enabled)throw new GameError('ESCROW_UNAVAILABLE');await finance.balances(wallet,deposit.asset,deposit.stake);}
+                if(deposit){if(finance?.public().depositRoomsEnabled===false)throw new GameError('DEPOSITS_UNAVAILABLE');wallet=await authenticate(db,body.walletSession,origin||new URL(request.url).origin,now);if(!playerName)throw new GameError('NICKNAME_REQUIRED');if(!finance?.public().enabled)throw new GameError('ESCROW_UNAVAILABLE');}
                 for (let attempt = 0; attempt < 5; attempt++) {
                     const row = await read(db, target);
                     if (!row || row.expires < now)
@@ -119,12 +119,14 @@ export async function handleArena(request, db, allowedOrigins = [], finance = nu
                     p.tokens[1] = hash;
                     p.s = Array.from(createState(p.s[27], body.character));
                     const s = new Float32Array(p.s);
-                    if(!p.payment)start(s);else p.payment.fundUntil=Math.floor(now/1000)+180;
+                    if(p.payment)p.payment.fundUntil=Math.floor(now/1000)+180;
+                    else if(p.selectionVersion===1)p.selection={until:now+10000,characters:[0,1],locked:[false,false]};
+                    else start(s);
                     p.s = Array.from(s);
                     p.last = now;
                     p.seen = [now, now];
-                    if (await save(db, row, p, p.payment?'funding':'playing', now))
-                        return response({ ...publicState({ ...row, status: p.payment?'funding':'playing' }, p, 1), token: tk });
+                    if (await save(db, row, p, p.payment||p.selection?'funding':'playing', now))
+                        return response({ ...publicState({ ...row, status: p.payment||p.selection?'funding':'playing' }, p, 1), token: tk });
                 }
                 throw new GameError('房间繁忙，请重新加入。', 409);
             }
@@ -132,7 +134,7 @@ export async function handleArena(request, db, allowedOrigins = [], finance = nu
             const active=wallet&&await db.prepare("SELECT code FROM arena_rooms WHERE status IN ('waiting','funding','playing') AND expires>? AND (status<>'waiting' OR updated>?) AND (json_extract(payload,'$.wallets[0]')=? OR json_extract(payload,'$.wallets[1]')=?) LIMIT 1").bind(now,now-15000,wallet,wallet).first();if(active)throw new GameError('ACTIVE_ROOM');
             const payment=body.deposit?await finance?.terms(wallet,body.deposit):null;if(body.deposit&&!payment)throw new GameError('ESCROW_UNAVAILABLE');
             for (let attempt = 0; attempt < 5; attempt++) {
-                const code = roomCode(), p = { createdAt:now,...(payment?{payment}:{}),wallets:[wallet,''],names:[playerName,''], s: Array.from(createState(body.character, 1 - body.character)), tokens: [hash, ''], m: [0, 0], pulse: [0, 0], seq: [0, 0], seen: [now, now], last: now, flags: [0, 0], logs: [], lastMask: [0, 0], buckets: [0, 0], counts: [0, 0] };
+                const code = roomCode(), p = { createdAt:now,selectionVersion:body.selectionVersion===1?1:0,...(payment?{payment}:{}),wallets:[wallet,''],names:[playerName,''], s: Array.from(createState(body.character, 1 - body.character)), tokens: [hash, ''], m: [0, 0], pulse: [0, 0], seq: [0, 0], seen: [now, now], last: now, flags: [0, 0], logs: [], lastMask: [0, 0], buckets: [0, 0], counts: [0, 0] };
                 try {
                     const inserted=await db.prepare("INSERT INTO arena_rooms (code,status,quick,updated,expires,version,payload) SELECT ?,'waiting',?,?,?,0,? WHERE ?='' OR NOT EXISTS (SELECT 1 FROM arena_rooms WHERE status IN ('waiting','funding','playing') AND expires>? AND (status<>'waiting' OR updated>?) AND (json_extract(payload,'$.wallets[0]')=? OR json_extract(payload,'$.wallets[1]')=?))").bind(code, action === 'match' ? 1 : 0, now, now + 600000, JSON.stringify(p),wallet,now,now-15000,wallet,wallet).run();if(!inserted.meta.changes)throw new GameError('ACTIVE_ROOM');
                     return response({ code, token: tk, slot: 0, state: p.s,names:p.names, status: 'waiting', locked: false,payment:payment?{key:payment.key,asset:payment.asset,stake:payment.stake,paid:payment.paid}:null });
@@ -168,10 +170,12 @@ export async function handleArena(request, db, allowedOrigins = [], finance = nu
                     return response({ ok: true });
                 continue;
             }
-            const allowed = new Set(['action', 'code', 'token', 'seq', 'mask', 'edges']);
+            const allowed = new Set(['action', 'code', 'token', 'seq', 'mask', 'edges', 'character', 'locked']);
             let invalid = '';
             if (Object.keys(body).some(k => !allowed.has(k)))
                 invalid = 'unexpected_field';
+            else if ((body.character!==undefined&&body.character!==0&&body.character!==1)||(body.locked!==undefined&&typeof body.locked!=='boolean'))
+                invalid = 'invalid_selection';
             else if (!validMask(body.mask) || !Number.isInteger(body.edges) || body.edges < 0 || body.edges > MAX_MASK)
                 invalid = 'invalid_input';
             else if (!Number.isSafeInteger(body.seq) || body.seq <= p.seq[slot] || body.seq > p.seq[slot] + 1000)
@@ -211,8 +215,15 @@ export async function handleArena(request, db, allowedOrigins = [], finance = nu
             }
             let phase=row.status;
             if(phase==='funding'){
-                if(now>=p.payment.fundUntil*1000){phase='cancelled';}
-                else if(p.payment.paid.every(Boolean)){const fight=new Float32Array(p.s);start(fight);p.s=Array.from(fight);p.last=now;p.seen=[now,now];p.m=[0,0];p.pulse=[0,0];phase='playing';}
+                // Free rooms share the preparation phase without payment or RPC work.
+                if(!p.payment||p.payment.admission||p.payment.paid.every(Boolean)){
+                    if(p.selectionVersion===1){
+                        p.selection??={until:now+10000,characters:[p.s[27],p.s[55]],locked:[false,false]};
+                        if(now<p.selection.until&&!p.selection.locked[slot]){if(body.character!==undefined)p.selection.characters[slot]=body.character;if(body.locked===true)p.selection.locked[slot]=true;}
+                    }
+                    if(!p.selection||now>=p.selection.until){const fight=p.selection?createState(...p.selection.characters):new Float32Array(p.s);start(fight);p.s=Array.from(fight);p.last=now;p.seen=[now,now];p.m=[0,0];p.pulse=[0,0];delete p.selection;phase='playing';}
+                }
+                else if(now>=p.payment.fundUntil*1000&&p.payment.checkedChainTime>=p.payment.fundUntil){phase='cancelled';}
             }
             if (phase === 'playing')advance(p, now);
             p.seq[slot] = body.seq;

@@ -63,7 +63,7 @@ entry='''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta nam
 (OUT/'index.html').write_text(entry)
 assert len(entry.encode())<=24000
 files=[dict(path=str(p.relative_to(OUT)),bytes=p.stat().st_size,sha256=sha(p.read_bytes()),chunks=(p.stat().st_size+23999)//24000) for p in sorted(OUT.rglob('*')) if p.is_file()];files.sort(key=lambda f:(f['path']=='index.html',f['path']))
-report=dict(version=json.loads((ROOT/'release.json').read_text())['version'],format=1,entry='index.html',entryLast=True,depositRoomsEnabled=False,apiOrigin='https://tapeoutexplorer.com',totalBytes=sum(f['bytes'] for f in files),totalChunks=sum(f['chunks'] for f in files),files=files)
+report=dict(version=json.loads((ROOT/'release.json').read_text())['version'],format=1,entry='index.html',entryLast=True,depositRoomsEnabled=bool(re.search(r'DEPOSIT_ROOMS_ENABLED\s*=\s*true', (PUBLIC/'feature-policy.mjs').read_text())),apiOrigin='https://tapeoutexplorer.com',totalBytes=sum(f['bytes'] for f in files),totalChunks=sum(f['chunks'] for f in files),files=files)
 assert report['totalBytes']<8_000_000
 (ROOT/'DEWEB_MANIFEST.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
 if args.previous_manifest:

@@ -38,7 +38,7 @@ export async function handleAuth(db,body,origin,ip,now=Date.now()){
  // DELETE RETURNING consumes the nonce exactly once, even under concurrent verification.
  const consumed=await db.prepare('DELETE FROM ember_challenges WHERE id=? AND origin=? AND expires>? RETURNING id').bind(row.id,origin,now).first();
  if(!consumed)fail('LOGIN_EXPIRED',401);
- const session=random(),expires=now+7*86400000;
+ const session=random(),expires=now+30*86400000;
  await db.batch([db.prepare('DELETE FROM ember_sessions WHERE address=? AND origin=?').bind(signer,origin),db.prepare('INSERT INTO ember_sessions (token_hash,address,origin,expires) VALUES (?,?,?,?)').bind(hash(session),signer,origin,expires)]);
  return {session,address:signer,chainId:CHAIN_ID,expires,nickname:await nickname(db,signer)};
 }

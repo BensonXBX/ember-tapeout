@@ -15,8 +15,15 @@ export function controlSequence(value,touch=false,lang=language()){
  return String(value).replace(/A\s*[\/／]\s*D/g,lang==='en'?'Stick ←/→':'摇杆←/→').replace(/按 R/g,lang==='en'?'Tap Reset':'点「重置位置」').replace(/\b(Esc|[WASDJHKLUOEIFR])\b/g,k=>names[k]);
 }
 export const entryCopy={
+ selectionCPU:['电脑','CPU'],selectionAIChoice:['选择电脑角色','Choose CPU fighter'],selectionCountdown:['{s} 秒后开战','Fight in {s}s'],
  networkPing:['延迟 {ms} ms','Ping {ms} ms'],
  networkPending:['延迟 -- ms','Ping -- ms'],
+ roomGuest:['玩家','Player'],roomBeforeSelection:['进入房间后，双方一起选择角色。','Join a room, then choose fighters together.'],
+ selectionYou:['你','You'],selectionOpponent:['对手','Opponent'],leaveFreeSelection:['离开房间','Leave room'],
+ onlineSelection:['{s} 秒后开战 · 对手选择：{fighter}','Fight in {s}s · Opponent: {fighter}'],selectionLocked:['已确认','Confirmed'],selectionChoosing:['选择中','Choosing'],leaveSelection:['离开后领取退款','Leave and claim refund'],depositRefundNotice:['准备已取消；已付款可在大厅领取退款，需钱包确认。','Preparation cancelled. Claim any paid deposit in the lobby with wallet confirmation.'],roomCancelled:['房间已取消，请重新匹配。','Room cancelled. Join another match.'],
+ fundingConnected:['房间已连接 · 等待押金确认','Room connected · Awaiting deposit confirmation'],
+ networkFallback:['切换 HTTP 连接…','Switching to HTTP…'],
+ networkRecoveryNotice:['连接中断，正在恢复对局…','Connection interrupted. Restoring the room…'],
  networkReconnecting:['重连中','Reconnecting'],
  networkWaiting:['等待响应','Waiting'],
  networkRttHint:['本机到对战服务器的往返耗时，包含服务器处理时间；不是对手的延迟。','Round-trip time to the game server, including server processing; not the opponent’s latency.'],
