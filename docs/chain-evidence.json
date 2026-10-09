@@ -1,0 +1,31 @@
+{
+  "observedAt": "2026-10-09T10:37:39+08:00",
+  "evidence": "verified_onchain",
+  "chainId": 196,
+  "network": "X Layer mainnet",
+  "processorNumber": 300,
+  "processor": "0x9b826bd2984c2a041ee3b8f7168f2620fc5d3281",
+  "transistor": "0x43ed51dc5bf22ea18ef002be474b94152fe66f0b",
+  "factory": "0x1f09daefa827f02cbb40967cc91b259763760761",
+  "deploymentWallet": "0xf2d7422470a7f1c6f37ac9285a54f4254c9b7a7e",
+  "deployment": {
+    "tx": "0x3098e008479e19c1b8036fb2d259a4c8a3c970517a744da63c0b4fa2e30cda50",
+    "block": 72611527,
+    "time": "2026-10-07T21:42:43+08:00",
+    "status": "success",
+    "supplyCap": "1000000",
+    "mintPriceWei": "660000000000000",
+    "mintPriceOKB": "0.00066"
+  },
+  "tapeout": {
+    "circuitId": 2,
+    "name": "2.2.300.tape",
+    "tx": "0xf75fe9fe249a0152efa1ee342296d56249b03d962d18e8916b4f6ea415388632",
+    "block": 72611867,
+    "time": "2026-10-07T21:48:23+08:00",
+    "status": "success",
+    "gates": 3,
+    "state": 0
+  },
+  "scope": "Factory deployment and an existing three-gate tapeout. This is not the game AI netlist; game AI runs locally. DeWeb upload is pending."
+}
